@@ -23,6 +23,7 @@ def main():
     pyinstaller_cmd = [
         "pyinstaller",
         "--clean",
+        "--onefile",
         "--noconsole",
         "--name=pdesolver-studio",
         f"--add-data={add_data_flag}",

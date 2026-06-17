@@ -17,10 +17,10 @@ jobs:
             artifact_name: pdesolver-studio.exe
             asset_name: pdesolver-studio-windows.exe
           - os: macos-latest
-            artifact_name: dist/pdesolver-studio.app
+            artifact_name: pdesolver-studio.app
             asset_name: pdesolver-studio-mac.app
           - os: ubuntu-latest
-            artifact_name: dist/pdesolver-studio
+            artifact_name: pdesolver-studio
             asset_name: pdesolver-studio-linux
     steps:
       - name: Checkout code
@@ -33,8 +33,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install -r studio/requirements.txt
-          pip install .
+          pip install -r requirements.txt
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -43,13 +42,13 @@ jobs:
 
       - name: Build and Package
         run: |
-          python studio/build_studio.py
+          python build_studio.py
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: studio/dist/${{ matrix.artifact_name }}
+          path: dist/${{ matrix.artifact_name }}
 
   release:
     name: Create Release
