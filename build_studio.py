@@ -21,7 +21,9 @@ def main():
     add_data_flag = f"frontend/dist{sep}frontend/dist"
     
     pyinstaller_cmd = [
-        "pyinstaller",
+        sys.executable,
+        "-m",
+        "PyInstaller",
         "--clean",
         "--onefile",
         "--noconsole",
