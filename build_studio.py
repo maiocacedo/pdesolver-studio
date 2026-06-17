@@ -29,7 +29,7 @@ def main():
         "--noconsole",
         "--name=pdesolver-studio",
         f"--add-data={add_data_flag}",
-        os.path.join("backend", "main.py")
+        "run_studio.py"
     ]
     
     subprocess.run(pyinstaller_cmd, check=True)
