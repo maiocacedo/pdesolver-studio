@@ -8,14 +8,10 @@ import time
 import numpy as np
 
 from ..schema import PDESPayload, SolveResult, FieldOut
+from pdesolver import PDE, PDES
 
 
 def solve(payload: PDESPayload) -> SolveResult:
-    try:
-        from pdesolver import PDE, PDES  # type: ignore[import]
-    except ImportError:
-        return _stub(payload)
-
     t0 = time.perf_counter()
     is_2d = len(payload["disc_n"]) > 1
 

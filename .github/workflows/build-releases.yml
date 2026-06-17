@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+      - '*v'
+      - '[0-9]*'
 
 permissions:
   contents: write
