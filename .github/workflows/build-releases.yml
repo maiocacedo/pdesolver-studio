@@ -1,0 +1,70 @@
+name: Build and Release Studio
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            artifact_name: pdesolver-studio.exe
+            asset_name: pdesolver-studio-windows.exe
+          - os: macos-latest
+            artifact_name: dist/pdesolver-studio.app
+            asset_name: pdesolver-studio-mac.app
+          - os: ubuntu-latest
+            artifact_name: dist/pdesolver-studio
+            asset_name: pdesolver-studio-linux
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r studio/requirements.txt
+          pip install .
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build and Package
+        run: |
+          python studio/build_studio.py
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: studio/dist/${{ matrix.artifact_name }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pdesolver-studio-windows.exe/*
+            pdesolver-studio-mac.app/*
+            pdesolver-studio-linux/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
