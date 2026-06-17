@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -17,8 +20,8 @@ jobs:
             artifact_name: pdesolver-studio.exe
             asset_name: pdesolver-studio-windows.exe
           - os: macos-latest
-            artifact_name: pdesolver-studio.app
-            asset_name: pdesolver-studio-mac.app
+            artifact_name: pdesolver-studio-mac.zip
+            asset_name: pdesolver-studio-mac.zip
           - os: ubuntu-latest
             artifact_name: pdesolver-studio
             asset_name: pdesolver-studio-linux
@@ -44,6 +47,12 @@ jobs:
         run: |
           python build_studio.py
 
+      - name: Zip macOS App
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd dist
+          zip -r pdesolver-studio-mac.zip pdesolver-studio.app
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -63,7 +72,7 @@ jobs:
         with:
           files: |
             pdesolver-studio-windows.exe/*
-            pdesolver-studio-mac.app/*
+            pdesolver-studio-mac.zip/*
             pdesolver-studio-linux/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
