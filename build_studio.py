@@ -17,6 +17,14 @@ def main():
 
     print("Packaging application with PyInstaller...")
     
+    # Manual clean up of build directory to avoid PyInstaller's buggy --clean behavior on Windows
+    build_dir = os.path.join(script_dir, "build")
+    if os.path.exists(build_dir):
+        try:
+            shutil.rmtree(build_dir)
+        except Exception:
+            pass
+
     sep = ";" if sys.platform == "win32" else ":"
     add_data_flag = f"frontend/dist{sep}frontend/dist"
     
@@ -24,7 +32,6 @@ def main():
         sys.executable,
         "-m",
         "PyInstaller",
-        "--clean",
         "--onefile",
         "--noconsole",
         "--name=pdesolver-studio",
