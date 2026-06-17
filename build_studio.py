@@ -36,8 +36,14 @@ def main():
         "--noconsole",
         "--name=pdesolver-studio",
         f"--add-data={add_data_flag}",
-        "run_studio.py"
     ]
+    
+    # Add sibling PDESsolver to search paths if it exists locally
+    sibling_pdesolver = os.path.abspath(os.path.join(script_dir, "..", "PDESsolver"))
+    if os.path.exists(sibling_pdesolver):
+        pyinstaller_cmd.append(f"--paths={sibling_pdesolver}")
+        
+    pyinstaller_cmd.append("run_studio.py")
     
     subprocess.run(pyinstaller_cmd, check=True)
     print("Build completed successfully! Check the 'dist' directory.")
