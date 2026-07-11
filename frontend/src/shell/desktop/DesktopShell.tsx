@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useStore, toPayload, type SystemConfig, type PDEConfig } from "../../state/store";
 import { heatPreset } from "../../gallery/examples";
 import { Drawer } from "../../components/Drawer";
@@ -130,7 +130,6 @@ export function DesktopShell() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleRun, setUI]);
 
-  const projectName = system.pdes.map((p) => p.name).join(" + ") + " — heat equation";
 
   const actions: MenuActions = {
     new: () => { loadPreset(heatPreset()); setUI({ dirty: false }); },
