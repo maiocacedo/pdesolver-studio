@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useStore } from "../state/store";
 import type { FieldOut } from "../types";
 import { Icon } from "../components/Icon";
+import { bridge } from "../api/pywebview";
 import { Plot1D } from "./Plot1D";
 import { Heatmap } from "./Heatmap";
 import { Heatmap2D } from "./Heatmap2D";
@@ -184,6 +185,74 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
   const visibleFieldIndices = useStore((s) => s.run.visibleFieldIndices);
   const toggleVisibleField = useStore((s) => s.toggleVisibleField);
 
+  const exportPanelImage = async (panelId: "plot1d" | "heatmap" | "plot3d") => {
+    const container = document.querySelector(`.grid-panel[data-panel="${panelId}"]`) || 
+                      document.querySelector(".viz-frame");
+    if (!container) return;
+    
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    const svg = container.querySelector("svg") as SVGGraphicsElement;
+
+    const downloadUri = async (uri: string, name: string) => {
+      if (bridge.isDesktop()) {
+        try {
+          const path = await bridge.saveDialog(name);
+          if (!path) return;
+          const success = await bridge.savePng(path, uri);
+          if (success) {
+            alert("Imagem do gráfico salva com sucesso!");
+          }
+        } catch (err) {
+          alert("Erro ao salvar imagem: " + err);
+        }
+        return;
+      }
+      const link = document.createElement("a");
+      link.download = name;
+      link.href = uri;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    if (canvas) {
+      try {
+        const dataUrl = canvas.toDataURL("image/png");
+        await downloadUri(dataUrl, `${panelId}_visualization.png`);
+      } catch (err) {
+        console.error("Failed to export canvas image", err);
+        alert("Erro ao exportar imagem: " + err);
+      }
+    } else if (svg) {
+      try {
+        const svgString = new XMLSerializer().serializeToString(svg);
+        const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+        const blobURL = URL.createObjectURL(svgBlob);
+        const image = new Image();
+        image.onload = async () => {
+          const canvas2 = document.createElement("canvas");
+          canvas2.width = svg.clientWidth || 800;
+          canvas2.height = svg.clientHeight || 500;
+          const context = canvas2.getContext("2d");
+          if (context) {
+            context.fillStyle = "rgba(20, 20, 20, 1)";
+            context.fillRect(0, 0, canvas2.width, canvas2.height);
+            context.drawImage(image, 0, 0);
+          }
+          const png = canvas2.toDataURL("image/png");
+          await downloadUri(png, `${panelId}_plot.png`);
+          URL.revokeObjectURL(blobURL);
+        };
+        image.src = blobURL;
+      } catch (err) {
+        console.error("Failed to export SVG image", err);
+        alert("Erro ao exportar imagem: " + err);
+      }
+    } else {
+      alert("Nenhuma imagem de visualização encontrada para exportar.");
+    }
+  };
+
   // Allow controlled tab from parent (DesktopShell menu) or fall back to store
   const tab: VizTab = tabProp ?? storeTab;
   const setTab = (t: VizTab) => {
@@ -205,7 +274,8 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
   if (!is2D) {
     visiblePanels.push("plot1d", "heatmap", "plot3d", "console");
   } else {
-    visiblePanels.push("plot3d", "console");
+    // For 2D fields: heatmap shows u(x,y) slice, plot3d shows surface u(x,y,t)
+    visiblePanels.push("heatmap", "plot3d", "console");
   }
 
   const [tIndex, setTIndex] = useState(0);
@@ -223,6 +293,15 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
   };
 
   const [recording, setRecording] = useState(false);
+  const [recStartStep, setRecStartStep] = useState<number>(1);
+  const [recEndStep, setRecEndStep] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (fields && fields[activeFieldIndex]) {
+      const len = fields[activeFieldIndex].ts.length;
+      setRecEndStep(len);
+    }
+  }, [fields, activeFieldIndex]);
 
   const startRecording = async () => {
     let canvas: HTMLCanvasElement | null = null;
@@ -253,7 +332,15 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
       }
 
       const chunks: Blob[] = [];
-      const recorder = new MediaRecorder(stream, { mimeType: "video/webm; codecs=vp9" });
+      let mimeType = "video/webm; codecs=vp9";
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = "video/webm; codecs=vp8";
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = "video/webm";
+      }
+      const options = MediaRecorder.isTypeSupported(mimeType) ? { mimeType } : undefined;
+      const recorder = new MediaRecorder(stream, options);
 
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunks.push(e.data);
@@ -274,8 +361,10 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
       setRecording(true);
       recorder.start();
 
-      const totalSteps = field!.ts.length;
-      for (let i = 0; i < totalSteps; i++) {
+      const start = Math.max(0, recStartStep - 1);
+      const end = Math.min(field!.ts.length - 1, (recEndStep ?? field!.ts.length) - 1);
+
+      for (let i = start; i <= end; i++) {
         setTIndex(i);
         await new Promise((resolve) => setTimeout(resolve, 80));
       }
@@ -365,7 +454,8 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
     (layoutMode === "grid" && (
       maximizedPanel === null ||
       maximizedPanel === "plot1d" ||
-      maximizedPanel === "plot3d"
+      maximizedPanel === "plot3d" ||
+      (maximizedPanel === "heatmap" && is2D)
     ))
   );
 
@@ -396,9 +486,9 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
       case "plot1d":
         return "1D Profile";
       case "heatmap":
-        return "Heatmap 1D";
+        return is2D ? "Heatmap 2D — u(x,y)" : "Heatmap 1D";
       case "plot3d":
-        return is2D ? "Heatmap 2D" : "Surface 3D";
+        return is2D ? "Surface 3D — u(x,y,t)" : "Surface 3D";
       case "console":
         return "Solver Statistics & Console";
     }
@@ -443,13 +533,25 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
           <span className="panel-title">{title}</span>
           {panelId === "plot1d" && renderFieldSelectors()}
         </div>
-        <button
-          className="panel-action"
-          onClick={() => toggleMaximizedPanel(panelId)}
-          title={isMax ? "Restore grid layout" : "Maximize panel"}
-        >
-          {isMax ? "↙ Restore" : "↗ Maximize"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {panelId !== "console" && (
+            <button
+              className="panel-action"
+              onClick={() => exportPanelImage(panelId as any)}
+              title="Export Image"
+              style={{ display: "flex", alignItems: "center", gap: 4 }}
+            >
+              📥 Exportar
+            </button>
+          )}
+          <button
+            className="panel-action"
+            onClick={() => toggleMaximizedPanel(panelId)}
+            title={isMax ? "Restore grid layout" : "Maximize panel"}
+          >
+            {isMax ? "↙ Restore" : "↗ Maximize"}
+          </button>
+        </div>
       </div>
     );
   };
@@ -474,11 +576,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
         return <Plot1D fields={fields!} visibleFieldIndices={visibleFieldIndices} mode={plotMode} tIndex={tIndex} palette={palette} />;
       case "heatmap":
         if (is2D) {
-          return (
-            <div style={{ textAlign: "center", color: "var(--text-faint)", fontSize: 13, padding: 16 }}>
-              Heatmap 1D is not applicable for 2D fields.<br />See Heatmap 2D in Panel 3.
-            </div>
-          );
+          return <Heatmap2D field={field!} tIndex={tIndex} palette={palette} />;
         }
         return <Heatmap field={field!} palette={palette} />;
       case "plot3d":
@@ -564,9 +662,21 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
           )
         ) : (
           <div className="viz-frame">
-            <div className="viz-frame-head">
-              <span className="viz-frame-title">{frameTitle}</span>
-              <span className="viz-frame-sub">{frameSub}</span>
+            <div className="viz-frame-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <span className="viz-frame-title">{frameTitle}</span>
+                <span className="viz-frame-sub">{frameSub}</span>
+              </div>
+              {!empty && (
+                <button
+                  className="panel-action"
+                  onClick={() => exportPanelImage(tab)}
+                  title="Export Image"
+                  style={{ display: "flex", alignItems: "center", gap: 4, height: "fit-content" }}
+                >
+                  📥 Exportar Gráfico
+                </button>
+              )}
             </div>
             <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
               {empty ? (
@@ -655,6 +765,50 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                       onClick={() => { setTIndex(0); setPlaying(false); }}>
                 <Icon.Reset />
               </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: 6 }}>
+                <span style={{ fontSize: 10, color: "var(--text-faint)" }}>De:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={field.ts.length}
+                  value={recStartStep}
+                  onChange={(e) => setRecStartStep(Math.max(1, Math.min(field.ts.length, Number(e.target.value) || 1)))}
+                  style={{
+                    width: 44,
+                    height: 22,
+                    background: "var(--surface-sunk)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 4,
+                    color: "var(--text)",
+                    fontSize: 10,
+                    textAlign: "center",
+                    padding: "2px 4px",
+                    fontFamily: "var(--font-mono)",
+                  }}
+                  disabled={recording}
+                />
+                <span style={{ fontSize: 10, color: "var(--text-faint)" }}>Até:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={field.ts.length}
+                  value={recEndStep ?? field.ts.length}
+                  onChange={(e) => setRecEndStep(Math.max(1, Math.min(field.ts.length, Number(e.target.value) || field.ts.length)))}
+                  style={{
+                    width: 44,
+                    height: 22,
+                    background: "var(--surface-sunk)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 4,
+                    color: "var(--text)",
+                    fontSize: 10,
+                    textAlign: "center",
+                    padding: "2px 4px",
+                    fontFamily: "var(--font-mono)",
+                  }}
+                  disabled={recording}
+                />
+              </div>
               <button className="play" aria-label="Record simulation video"
                       onClick={startRecording}
                       disabled={recording}
