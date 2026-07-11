@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useStore } from "../../state/store";
 
 interface TourStepConfig {
@@ -8,6 +8,8 @@ interface TourStepConfig {
   math?: string;
   arrowClass: string;
   fallbackPosition: { top: string; left: string };
+  /** If set, scroll this selector into view before measuring */
+  scrollIntoViewSelector?: string;
 }
 
 const TOUR_STEPS: TourStepConfig[] = [
@@ -17,6 +19,7 @@ const TOUR_STEPS: TourStepConfig[] = [
     desc: "Aqui você define as equações diferenciais parciais (EDPs), a Condição Inicial u(x,0) e as Condições de Contorno nas extremidades Oeste (esquerda) e Leste (direita) da corda.",
     math: "∂u/∂t = v,   u(x,0) = e^{-200(x-0.5)²}",
     arrowClass: "arrow-left",
+    scrollIntoViewSelector: ".studio-sidebar .card:nth-of-type(1) .card-head",
     fallbackPosition: { top: "100px", left: "400px" }
   },
   {
@@ -25,6 +28,7 @@ const TOUR_STEPS: TourStepConfig[] = [
     desc: "Neste card você parametriza os limites espaciais e temporais do domínio, a resolução da malha (nx, nt) e seleciona os esquemas matemáticos de discretização e integração.",
     math: "nx = 100,   nt = 300,   Δt, Δx",
     arrowClass: "arrow-left",
+    scrollIntoViewSelector: ".studio-sidebar .card:nth-of-type(2) .card-head",
     fallbackPosition: { top: "300px", left: "400px" }
   },
   {
@@ -95,65 +99,80 @@ export function TourOverlay() {
 
   const step = TOUR_STEPS[tourStep];
 
-  const updatePosition = () => {
+  const measureAndPosition = useCallback(() => {
     if (!step) return;
-    const el = document.querySelector(step.selector);
-    if (el) {
-      const rect = el.getBoundingClientRect();
-      setCoords({
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-        visible: true
-      });
-
-      // Calcular posição do popup
-      setTimeout(() => {
-        if (!popupRef.current) return;
-        const popRect = popupRef.current.getBoundingClientRect();
-        let topVal = rect.top;
-        let leftVal = rect.left;
-
-        if (step.arrowClass === "arrow-left") {
-          leftVal = rect.right + 20;
-          topVal = rect.top + (rect.height / 2) - (popRect.height / 2);
-        } else if (step.arrowClass === "arrow-right") {
-          leftVal = rect.left - popRect.width - 20;
-          topVal = rect.top + (rect.height / 2) - (popRect.height / 2);
-        } else if (step.arrowClass === "arrow-top") {
-          leftVal = rect.left + (rect.width / 2) - (popRect.width / 2);
-          topVal = rect.bottom + 20;
-        } else if (step.arrowClass === "arrow-bottom") {
-          leftVal = rect.left + (rect.width / 2) - (popRect.width / 2);
-          topVal = rect.top - popRect.height - 20;
-        }
-
-        // Evitar estouro da tela
-        leftVal = Math.max(10, Math.min(window.innerWidth - popRect.width - 10, leftVal));
-        topVal = Math.max(10, Math.min(window.innerHeight - popRect.height - 10, topVal));
-
-        setPopupPos({
-          top: `${topVal}px`,
-          left: `${leftVal}px`
-        });
-      }, 50);
-    } else {
+    const el = document.querySelector<HTMLElement>(step.selector);
+    if (!el) {
       setCoords((c) => ({ ...c, visible: false }));
-      setPopupPos({
-        top: step.fallbackPosition.top,
-        left: step.fallbackPosition.left
-      });
+      setPopupPos({ top: step.fallbackPosition.top, left: step.fallbackPosition.left });
+      return;
     }
-  };
+
+    // Bring the target into the scrollable sidebar viewport
+    const scrollTarget = step.scrollIntoViewSelector
+      ? document.querySelector<HTMLElement>(step.scrollIntoViewSelector)
+      : el;
+    if (scrollTarget) {
+      scrollTarget.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+
+    // Wait for scroll + any layout shifts to settle before measuring
+    setTimeout(() => {
+      const rect = el.getBoundingClientRect();
+
+      // Clamp the highlight box to the visible viewport (in case card is partially off-screen)
+      const visTop = Math.max(rect.top, 0);
+      const visBottom = Math.min(rect.bottom, window.innerHeight);
+      const visLeft = Math.max(rect.left, 0);
+      const visRight = Math.min(rect.right, window.innerWidth);
+      const visWidth = Math.max(visRight - visLeft, 0);
+      const visHeight = Math.max(visBottom - visTop, 0);
+
+      const isVisible = visWidth > 10 && visHeight > 10;
+
+      setCoords({
+        top: isVisible ? visTop : rect.top,
+        left: isVisible ? visLeft : rect.left,
+        width: isVisible ? visWidth : rect.width,
+        height: isVisible ? visHeight : rect.height,
+        visible: isVisible,
+      });
+
+      // Calculate popup position based on full rect (where element actually is)
+      if (!popupRef.current) return;
+      const popRect = popupRef.current.getBoundingClientRect();
+      let topVal = rect.top;
+      let leftVal = rect.left;
+
+      if (step.arrowClass === "arrow-left") {
+        leftVal = rect.right + 20;
+        topVal = rect.top + (rect.height / 2) - (popRect.height / 2);
+      } else if (step.arrowClass === "arrow-right") {
+        leftVal = rect.left - popRect.width - 20;
+        topVal = rect.top + (rect.height / 2) - (popRect.height / 2);
+      } else if (step.arrowClass === "arrow-top") {
+        leftVal = rect.left + (rect.width / 2) - (popRect.width / 2);
+        topVal = rect.bottom + 20;
+      } else if (step.arrowClass === "arrow-bottom") {
+        leftVal = rect.left + (rect.width / 2) - (popRect.width / 2);
+        topVal = rect.top - popRect.height - 20;
+      }
+
+      // Hard clamp: keep popup fully on-screen
+      leftVal = Math.max(10, Math.min(window.innerWidth - popRect.width - 10, leftVal));
+      topVal = Math.max(10, Math.min(window.innerHeight - popRect.height - 10, topVal));
+
+      setPopupPos({ top: `${topVal}px`, left: `${leftVal}px` });
+    }, 180);
+  }, [step]);
 
   useEffect(() => {
     if (tourActive) {
-      updatePosition();
-      window.addEventListener("resize", updatePosition);
-      return () => window.removeEventListener("resize", updatePosition);
+      measureAndPosition();
+      window.addEventListener("resize", measureAndPosition);
+      return () => window.removeEventListener("resize", measureAndPosition);
     }
-  }, [tourActive, tourStep]);
+  }, [tourActive, tourStep, measureAndPosition]);
 
   if (!tourActive || !step) return null;
 
