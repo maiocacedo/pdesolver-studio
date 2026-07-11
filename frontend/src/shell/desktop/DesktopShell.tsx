@@ -447,6 +447,7 @@ export function DesktopShell() {
                 style={{ fontSize: 11, opacity: 0.65 }}>
           ⚙ Tweaks
         </button>
+      </div>
     </div>
   );
 }
