@@ -10,6 +10,11 @@ interface TourStepConfig {
   fallbackPosition: { top: string; left: string };
   /** If set, scroll this selector into view before measuring */
   scrollIntoViewSelector?: string;
+  /**
+   * 0-based index of which .studio-sidebar .card should be expanded.
+   * All other sidebar cards will be collapsed to maximize the visible area.
+   */
+  sidebarCardIndex?: number;
 }
 
 const TOUR_STEPS: TourStepConfig[] = [
@@ -20,6 +25,7 @@ const TOUR_STEPS: TourStepConfig[] = [
     math: "∂u/∂t = v,   u(x,0) = e^{-200(x-0.5)²}",
     arrowClass: "arrow-left",
     scrollIntoViewSelector: ".studio-sidebar .card:nth-of-type(1) .card-head",
+    sidebarCardIndex: 0,
     fallbackPosition: { top: "100px", left: "400px" }
   },
   {
@@ -29,6 +35,7 @@ const TOUR_STEPS: TourStepConfig[] = [
     math: "nx = 100,   nt = 300,   Δt, Δx",
     arrowClass: "arrow-left",
     scrollIntoViewSelector: ".studio-sidebar .card:nth-of-type(2) .card-head",
+    sidebarCardIndex: 1,
     fallbackPosition: { top: "300px", left: "400px" }
   },
   {
@@ -99,6 +106,22 @@ export function TourOverlay() {
 
   const step = TOUR_STEPS[tourStep];
 
+  /**
+   * Expand the sidebar card at `targetIndex` and collapse all others.
+   * Detects current state by checking for the presence of `.card-body`.
+   */
+  const manageSidebarCards = useCallback((targetIndex: number) => {
+    const cards = document.querySelectorAll<HTMLElement>(".studio-sidebar .card");
+    cards.forEach((card, i) => {
+      const isExpanded = !!card.querySelector(".card-body");
+      const shouldExpand = i === targetIndex;
+      if (isExpanded !== shouldExpand) {
+        const head = card.querySelector<HTMLElement>(".card-head");
+        head?.click();
+      }
+    });
+  }, []);
+
   const measureAndPosition = useCallback(() => {
     if (!step) return;
     const el = document.querySelector<HTMLElement>(step.selector);
@@ -108,63 +131,73 @@ export function TourOverlay() {
       return;
     }
 
-    // Bring the target into the scrollable sidebar viewport
-    const scrollTarget = step.scrollIntoViewSelector
-      ? document.querySelector<HTMLElement>(step.scrollIntoViewSelector)
-      : el;
-    if (scrollTarget) {
-      scrollTarget.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }
-
-    // Wait for scroll + any layout shifts to settle before measuring
-    setTimeout(() => {
-      const rect = el.getBoundingClientRect();
-
-      // Clamp the highlight box to the visible viewport (in case card is partially off-screen)
-      const visTop = Math.max(rect.top, 0);
-      const visBottom = Math.min(rect.bottom, window.innerHeight);
-      const visLeft = Math.max(rect.left, 0);
-      const visRight = Math.min(rect.right, window.innerWidth);
-      const visWidth = Math.max(visRight - visLeft, 0);
-      const visHeight = Math.max(visBottom - visTop, 0);
-
-      const isVisible = visWidth > 10 && visHeight > 10;
-
-      setCoords({
-        top: isVisible ? visTop : rect.top,
-        left: isVisible ? visLeft : rect.left,
-        width: isVisible ? visWidth : rect.width,
-        height: isVisible ? visHeight : rect.height,
-        visible: isVisible,
-      });
-
-      // Calculate popup position based on full rect (where element actually is)
-      if (!popupRef.current) return;
-      const popRect = popupRef.current.getBoundingClientRect();
-      let topVal = rect.top;
-      let leftVal = rect.left;
-
-      if (step.arrowClass === "arrow-left") {
-        leftVal = rect.right + 20;
-        topVal = rect.top + (rect.height / 2) - (popRect.height / 2);
-      } else if (step.arrowClass === "arrow-right") {
-        leftVal = rect.left - popRect.width - 20;
-        topVal = rect.top + (rect.height / 2) - (popRect.height / 2);
-      } else if (step.arrowClass === "arrow-top") {
-        leftVal = rect.left + (rect.width / 2) - (popRect.width / 2);
-        topVal = rect.bottom + 20;
-      } else if (step.arrowClass === "arrow-bottom") {
-        leftVal = rect.left + (rect.width / 2) - (popRect.width / 2);
-        topVal = rect.top - popRect.height - 20;
+    const doScrollAndMeasure = () => {
+      // Bring the target into the scrollable sidebar viewport
+      const scrollTarget = step.scrollIntoViewSelector
+        ? document.querySelector<HTMLElement>(step.scrollIntoViewSelector)
+        : el;
+      if (scrollTarget) {
+        scrollTarget.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }
 
-      // Hard clamp: keep popup fully on-screen
-      leftVal = Math.max(10, Math.min(window.innerWidth - popRect.width - 10, leftVal));
-      topVal = Math.max(10, Math.min(window.innerHeight - popRect.height - 10, topVal));
+      // Wait for scroll + any layout shifts to settle before measuring
+      setTimeout(() => {
+        const rect = el.getBoundingClientRect();
 
-      setPopupPos({ top: `${topVal}px`, left: `${leftVal}px` });
-    }, 180);
-  }, [step]);
+        // Clamp the highlight box to the visible viewport (in case card is partially off-screen)
+        const visTop = Math.max(rect.top, 0);
+        const visBottom = Math.min(rect.bottom, window.innerHeight);
+        const visLeft = Math.max(rect.left, 0);
+        const visRight = Math.min(rect.right, window.innerWidth);
+        const visWidth = Math.max(visRight - visLeft, 0);
+        const visHeight = Math.max(visBottom - visTop, 0);
+
+        const isVisible = visWidth > 10 && visHeight > 10;
+
+        setCoords({
+          top: isVisible ? visTop : rect.top,
+          left: isVisible ? visLeft : rect.left,
+          width: isVisible ? visWidth : rect.width,
+          height: isVisible ? visHeight : rect.height,
+          visible: isVisible,
+        });
+
+        // Calculate popup position based on full rect (where element actually is)
+        if (!popupRef.current) return;
+        const popRect = popupRef.current.getBoundingClientRect();
+        let topVal = rect.top;
+        let leftVal = rect.left;
+
+        if (step.arrowClass === "arrow-left") {
+          leftVal = rect.right + 20;
+          topVal = rect.top + (rect.height / 2) - (popRect.height / 2);
+        } else if (step.arrowClass === "arrow-right") {
+          leftVal = rect.left - popRect.width - 20;
+          topVal = rect.top + (rect.height / 2) - (popRect.height / 2);
+        } else if (step.arrowClass === "arrow-top") {
+          leftVal = rect.left + (rect.width / 2) - (popRect.width / 2);
+          topVal = rect.bottom + 20;
+        } else if (step.arrowClass === "arrow-bottom") {
+          leftVal = rect.left + (rect.width / 2) - (popRect.width / 2);
+          topVal = rect.top - popRect.height - 20;
+        }
+
+        // Hard clamp: keep popup fully on-screen
+        leftVal = Math.max(10, Math.min(window.innerWidth - popRect.width - 10, leftVal));
+        topVal = Math.max(10, Math.min(window.innerHeight - popRect.height - 10, topVal));
+
+        setPopupPos({ top: `${topVal}px`, left: `${leftVal}px` });
+      }, 180);
+    };
+
+    if (step.sidebarCardIndex !== undefined) {
+      // First toggle the cards to the right state, then wait for React re-render
+      manageSidebarCards(step.sidebarCardIndex);
+      setTimeout(doScrollAndMeasure, 120);
+    } else {
+      doScrollAndMeasure();
+    }
+  }, [step, manageSidebarCards]);
 
   useEffect(() => {
     if (tourActive) {
@@ -173,6 +206,7 @@ export function TourOverlay() {
       return () => window.removeEventListener("resize", measureAndPosition);
     }
   }, [tourActive, tourStep, measureAndPosition]);
+
 
   if (!tourActive || !step) return null;
 
