@@ -16,7 +16,7 @@ import type {
   SolveResult, TimeMethod,
 } from "../types";
 import { bridge } from "../api/pywebview";
-import { heatPreset } from "../gallery/examples";
+import { heatPreset, wave1DPreset } from "../gallery/examples";
 
 // ── per-PDE config (UI shape — slightly richer than PDEPayload) ─────
 export interface PDEConfig {
@@ -49,6 +49,8 @@ export interface UIState {
   dirty: boolean;
   layoutMode: "grid" | "tabs";
   maximizedPanel: "plot1d" | "heatmap" | "plot3d" | "console" | null;
+  tourActive: boolean;
+  tourStep: number;
 }
 
 export interface HistoryEntry {
@@ -94,8 +96,15 @@ interface Store {
 
   // Run
   solve(): Promise<void>;
+  discretize(): Promise<void>;
   resetRun(): void;
   toggleVisibleField(index: number): void;
+
+  // Tour
+  startTour(): void;
+  endTour(): void;
+  nextTourStep(): void;
+  prevTourStep(): void;
 }
 
 export const useStore = create<Store>((set, get) => ({
@@ -109,6 +118,8 @@ export const useStore = create<Store>((set, get) => ({
     dirty: false,
     layoutMode: "tabs",
     maximizedPanel: null,
+    tourActive: false,
+    tourStep: 0,
   },
   run: {
     status: "pristine",
@@ -131,7 +142,11 @@ export const useStore = create<Store>((set, get) => ({
 
   addPde: () => set((s) => {
     const id = `pde-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const n = s.system.pdes.length + 1;
+    const existingNames = s.system.pdes.map((p) => p.func);
+    let n = 1;
+    while (existingNames.includes(`u${n}`)) {
+      n++;
+    }
     const next: PDEConfig = {
       ...s.system.pdes[0],
       id,
@@ -229,10 +244,87 @@ export const useStore = create<Store>((set, get) => ({
     },
   })),
 
+  startTour: () => {
+    const wavePreset = wave1DPreset();
+    set((s) => ({
+      system: wavePreset,
+      ui: {
+        ...s.ui,
+        tourActive: true,
+        tourStep: 0,
+        vizTab: "plot1d",
+        layoutMode: "tabs",
+        showInspector: false,
+        maximizedPanel: null,
+      },
+      run: {
+        ...s.run,
+        status: "pristine",
+        fields: null,
+        activeFieldIndex: 0,
+        visibleFieldIndices: [0],
+        error: null,
+        meta: null,
+        lastRunMs: 0,
+      }
+    }));
+  },
+
+  endTour: () => set((s) => ({
+    ui: { ...s.ui, tourActive: false, tourStep: 0 }
+  })),
+
+  nextTourStep: () => set((s) => {
+    const nextStep = s.ui.tourStep + 1;
+    let patch: Partial<UIState> = { tourStep: nextStep };
+
+    if (nextStep === 3) {
+      patch.vizTab = "plot1d";
+      patch.layoutMode = "tabs";
+    } else if (nextStep === 4) {
+      patch.vizTab = "heatmap";
+      patch.layoutMode = "tabs";
+    } else if (nextStep === 5) {
+      patch.vizTab = "plot3d";
+      patch.layoutMode = "tabs";
+    } else if (nextStep === 6) {
+      patch.layoutMode = "grid";
+      patch.maximizedPanel = null;
+    } else if (nextStep === 7) {
+      patch.showInspector = true;
+    }
+
+    return { ui: { ...s.ui, ...patch } };
+  }),
+
+  prevTourStep: () => set((s) => {
+    const prevStep = Math.max(0, s.ui.tourStep - 1);
+    let patch: Partial<UIState> = { tourStep: prevStep };
+
+    if (prevStep === 3) {
+      patch.vizTab = "plot1d";
+      patch.layoutMode = "tabs";
+    } else if (prevStep === 4) {
+      patch.vizTab = "heatmap";
+      patch.layoutMode = "tabs";
+    } else if (prevStep === 5) {
+      patch.vizTab = "plot3d";
+      patch.layoutMode = "tabs";
+    } else if (prevStep === 6) {
+      patch.layoutMode = "grid";
+      patch.maximizedPanel = null;
+    } else if (prevStep === 7) {
+      patch.showInspector = true;
+    }
+
+    return { ui: { ...s.ui, ...patch } };
+  }),
+
   solve: async () => {
     set((s) => ({ run: { ...s.run, status: "solving", error: null } }));
     const t0 = performance.now();
     try {
+      validateSystemConfig(get().system);
       const payload = toPayload(get().system);
       const result: SolveResult = await bridge.solve(payload);
       set((s) => ({
@@ -252,7 +344,33 @@ export const useStore = create<Store>((set, get) => ({
       }));
     } catch (err) {
       set((s) => ({
-        run: { ...s.run, status: "error", error: String(err), meta: null },
+        run: { ...s.run, status: "error", error: err instanceof Error ? err.message : String(err), meta: null },
+      }));
+    }
+  },
+
+  discretize: async () => {
+    set((s) => ({ run: { ...s.run, status: "solving", error: null } }));
+    const t0 = performance.now();
+    try {
+      validateSystemConfig(get().system);
+      const payload = toPayload(get().system);
+      payload.discretize_only = true;
+      const result: SolveResult = await bridge.solve(payload);
+      set((s) => ({
+        run: {
+          ...s.run,
+          status: "solved",
+          fields: result.fields,
+          activeFieldIndex: 0,
+          visibleFieldIndices: [0],
+          lastRunMs: performance.now() - t0,
+          meta: result.meta,
+        },
+      }));
+    } catch (err) {
+      set((s) => ({
+        run: { ...s.run, status: "error", error: err instanceof Error ? err.message : String(err), meta: null },
       }));
     }
   },
@@ -301,8 +419,67 @@ export const useStore = create<Store>((set, get) => ({
   }),
 }));
 
+function validateSystemConfig(sys: SystemConfig) {
+  const is2D = !!sys.domain.ymin && sys.mesh.ny !== undefined;
+
+  for (const pde of sys.pdes) {
+    if (!pde.func || pde.func.trim() === "") {
+      throw new Error("O nome da variável da função PDE não pode ser vazio.");
+    }
+    if (!pde.eq || pde.eq.trim() === "") {
+      throw new Error(`A equação para a função ${pde.func} não pode ser vazia.`);
+    }
+    if (!pde.ic || pde.ic.trim() === "") {
+      throw new Error(`A condição inicial para a função ${pde.func} não pode ser vazia.`);
+    }
+    if (!pde.west?.expr || pde.west.expr.trim() === "") {
+      throw new Error(`A condição de contorno Oeste (O) para a função ${pde.func} não pode ser vazia.`);
+    }
+    if (!pde.east?.expr || pde.east.expr.trim() === "") {
+      throw new Error(`A condição de contorno Leste (L) para a função ${pde.func} não pode ser vazia.`);
+    }
+    if (is2D) {
+      if (!pde.north?.expr || pde.north.expr.trim() === "") {
+        throw new Error(`A condição de contorno Norte (N) para a função ${pde.func} não pode ser vazia.`);
+      }
+      if (!pde.south?.expr || pde.south.expr.trim() === "") {
+        throw new Error(`A condição de contorno Sul (S) para a função ${pde.func} não pode ser vazia.`);
+      }
+    }
+  }
+
+  const xmin = parseFloat(sys.domain.xmin);
+  const xmax = parseFloat(sys.domain.xmax);
+  if (isNaN(xmin) || isNaN(xmax)) {
+    throw new Error("Os limites do domínio espacial x (xmin, xmax) devem ser valores numéricos válidos.");
+  }
+  if (xmin >= xmax) {
+    throw new Error("O valor de xmin deve ser estritamente menor que xmax.");
+  }
+
+  const t0 = parseFloat(sys.domain.t0);
+  const tf = parseFloat(sys.domain.tf);
+  if (isNaN(t0) || isNaN(tf)) {
+    throw new Error("O intervalo de tempo (t0, tf) deve ser preenchido com valores numéricos válidos.");
+  }
+  if (t0 >= tf) {
+    throw new Error("O valor de t0 deve ser menor que tf.");
+  }
+
+  if (is2D) {
+    const ymin = parseFloat(sys.domain.ymin!);
+    const ymax = parseFloat(sys.domain.ymax!);
+    if (isNaN(ymin) || isNaN(ymax)) {
+      throw new Error("Os limites do domínio espacial y (ymin, ymax) devem ser valores numéricos válidos.");
+    }
+    if (ymin >= ymax) {
+      throw new Error("O valor de ymin deve ser estritamente menor que ymax.");
+    }
+  }
+}
+
 // ── Helpers ────────────────────────────────────────────────────────
-function toPayload(sys: SystemConfig): PDESPayload {
+export function toPayload(sys: SystemConfig): PDESPayload {
   const is2D = !!sys.domain.ymin && sys.mesh.ny !== undefined;
   const ivar_boundary: Array<[number, number]> = [
     [parseFloat(sys.domain.xmin) || 0, parseFloat(sys.domain.xmax) || 1],
