@@ -44,7 +44,7 @@ def main() -> None:
         min_size=(1100, 700),
         resizable=True,
         # Set frameless=True if you want to use the custom title bar from the design.
-        # frameless=True,
+        frameless=False,
     )
     api.bind_window(window)
     webview.start(debug=os.environ.get("DEV") == "1")

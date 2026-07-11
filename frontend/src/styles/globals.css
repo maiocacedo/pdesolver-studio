@@ -770,13 +770,14 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   background: rgba(8, 9, 14, 0.65);
   backdrop-filter: blur(2px);
   pointer-events: auto;
+  transition: clip-path 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tour-spotlight-box {
   position: fixed;
   border: 2px solid var(--accent);
   border-radius: 8px;
-  box-shadow: 0 0 0 9999px rgba(8, 9, 14, 0.65), 0 0 15px rgba(100, 100, 255, 0.3);
+  box-shadow: 0 0 15px rgba(100, 100, 255, 0.3);
   z-index: 99991;
   pointer-events: none;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -948,37 +949,6 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .tour-progress-text {
   font-size: 10px;
   color: var(--text-faint);
-}
-
-/* Custom Window Resizing Borders for Frameless App */
-.win-resize-e {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 5px;
-  cursor: e-resize;
-  z-index: 99999;
-}
-
-.win-resize-s {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 5px;
-  cursor: s-resize;
-  z-index: 99999;
-}
-
-.win-resize-se {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  width: 10px;
-  height: 10px;
-  cursor: se-resize;
-  z-index: 100000;
 }
 
 

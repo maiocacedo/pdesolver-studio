@@ -159,10 +159,23 @@ export function TourOverlay() {
 
   const isLast = tourStep === TOUR_STEPS.length - 1;
 
+  const getClipPath = () => {
+    if (!coords.visible) return "none";
+    const l = coords.left - 4;
+    const t = coords.top - 4;
+    const r = coords.left + coords.width + 4;
+    const b = coords.top + coords.height + 4;
+    return `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${l}px ${t}px, ${l}px ${b}px, ${r}px ${b}px, ${r}px ${t}px, ${l}px ${t}px)`;
+  };
+
   return (
     <div className="tour-overlay-root">
       {/* Backdrop escurecido */}
-      <div className="tour-backdrop-bg" onClick={endTour} />
+      <div 
+        className="tour-backdrop-bg" 
+        style={{ clipPath: getClipPath() }}
+        onClick={endTour} 
+      />
 
       {/* Spotlight Highlighter */}
       {coords.visible && (
