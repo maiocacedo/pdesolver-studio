@@ -147,9 +147,47 @@ export const PRESETS: GalleryItem[] = [
         },
       ],
       activePdeId: "pde-1",
-      domain: { xmin: "0", xmax: "1", t0: "0", tf: "2.0", ymin: "0", ymax: "1" },
-      mesh: { nx: 21, ny: 21, nt: 2000 },
+      domain: { xmin: "0", xmax: "1", t0: "0", tf: "0.5", ymin: "0", ymax: "1" },
+      mesh: { nx: 21, ny: 21, nt: 500 },
       scheme: { disc: "central", time: "bdf2" },
     }),
   },
+  {
+    id: "wave-1d-coupled",
+    title: "Wave — 1D coupled pulse",
+    eq: "∂u/∂t = v,  ∂v/∂t = c²∂²u/∂x²",
+    meta: "Hyperbolic · 1D · Gaussian IC",
+    description: "A 1-D wave equation modeled as a coupled first-order system. Ideal for visualizing propagation, reflection and conservation of energy.",
+    build: wave1DPreset,
+  },
 ];
+
+export function wave1DPreset(): SystemConfig {
+  return {
+    pdes: [
+      {
+        id: "wave-u",
+        name: "u",
+        func: "u",
+        eq: "du/dt = v",
+        ic: "exp(-200*(x-0.5)**2)",
+        west: { type: "Dirichlet", expr: "0" },
+        east: { type: "Dirichlet", expr: "0" },
+      },
+      {
+        id: "wave-v",
+        name: "v",
+        func: "v",
+        eq: "dv/dt = 2.25*d2u/dx2 - 0.05*v",
+        ic: "0",
+        west: { type: "Dirichlet", expr: "0" },
+        east: { type: "Dirichlet", expr: "0" },
+      }
+    ],
+    activePdeId: "wave-u",
+    domain: { xmin: "0", xmax: "1", t0: "0", tf: "1.0" },
+    mesh: { nx: 100, nt: 300 },
+    scheme: { disc: "central", time: "CN" }
+  };
+}
+
