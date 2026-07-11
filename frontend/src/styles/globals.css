@@ -1,17 +1,75 @@
 /* pdesolver studio — global styles. Design tokens are in tokens.css. */
 
 :root {
-  --color-field-0: oklch(0.62 0.26 265); /* Vivid Indigo */
-  --color-field-1: oklch(0.68 0.28 145); /* Vivid Emerald */
-  --color-field-2: oklch(0.64 0.28 35);  /* Vivid Coral/Orange */
-  --color-field-3: oklch(0.60 0.30 320); /* Vivid Magenta/Violet */
-  --color-field-4: oklch(0.76 0.28 85);  /* Vivid Gold/Yellow */
+  /* Academic palette — inspired by Tab10/Set1, oklch-tuned for perceptual uniformity */
+  --color-field-0: oklch(0.55 0.22 260);  /* Deep Blue (primary) */
+  --color-field-1: oklch(0.63 0.24 25);   /* Vermillion Red */
+  --color-field-2: oklch(0.72 0.20 145);  /* Emerald Green */
+  --color-field-3: oklch(0.70 0.22 55);   /* Amber Orange */
+  --color-field-4: oklch(0.58 0.24 310);  /* Royal Purple */
 }
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Range input styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--surface-sunk);
+  border-radius: 2px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  margin-top: -5px;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+}
+
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
 *, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; height: 100%; }
+html, body, #root, .desktop {
+  margin: 0; padding: 0; height: 100%;
+  -webkit-app-region: no-drag;
+}
 body {
   font-family: var(--font-sans);
   color: var(--text);
@@ -225,6 +283,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   background: radial-gradient(circle at 30px 30px, oklch(0.86 0.012 260) 1px, transparent 1px), var(--bg);
   background-size: 24px 24px;
 }
+[data-theme="dark"] .viz-stage {
+  background: radial-gradient(circle at 30px 30px, rgba(255, 255, 255, 0.04) 1px, transparent 1px), var(--bg);
+}
 .viz-frame {
   flex: 1; background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-4); padding: 24px; box-shadow: var(--shadow-2);
@@ -346,6 +407,14 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 .titlebar-controls button:hover { background: oklch(0 0 0 / 0.06); }
 .titlebar-controls button[data-action="close"]:hover { background: #e81123; color: #fff; }
+
+[data-theme="dark"] .titlebar {
+  background: var(--surface-sunk);
+  color: var(--text-muted);
+}
+[data-theme="dark"] .titlebar-controls button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
 
 .menubar {
   display: flex; align-items: stretch; height: 30px;
@@ -657,4 +726,229 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .console-log-line[data-type="info"] {
   color: var(--accent);
 }
+
+.inspector-toggle-btn {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 48px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  color: var(--text-muted);
+  box-shadow: var(--shadow-1);
+  font-size: 14px;
+  font-weight: bold;
+  padding: 0;
+  transition: background 0.1s, color 0.1s, width 0.1s;
+}
+.inspector-toggle-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  width: 18px;
+}
+
+/* Tour Guided Overlay & Spotlight Styles */
+.tour-overlay-root {
+  position: fixed;
+  inset: 0;
+  z-index: 99990;
+  pointer-events: none;
+}
+
+.tour-backdrop-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 9, 14, 0.65);
+  backdrop-filter: blur(2px);
+  pointer-events: auto;
+}
+
+.tour-spotlight-box {
+  position: fixed;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 0 0 9999px rgba(8, 9, 14, 0.65), 0 0 15px rgba(100, 100, 255, 0.3);
+  z-index: 99991;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tour-popup-card {
+  position: fixed;
+  z-index: 99992;
+  width: 320px;
+  border-radius: var(--r-3);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Style Glassmorphic */
+.tour-popup-card.style-glass {
+  background: rgba(22, 25, 36, 0.85);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tour-popup-arrow {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: rgb(22, 25, 36);
+  transform: rotate(45deg);
+  border: 1px solid transparent;
+  z-index: -1;
+}
+
+.tour-popup-arrow.arrow-left {
+  left: -5px;
+  top: 30px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tour-popup-arrow.arrow-right {
+  right: -5px;
+  top: 30px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tour-popup-arrow.arrow-top {
+  top: -5px;
+  left: calc(50% - 5px);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tour-popup-arrow.arrow-bottom {
+  bottom: -5px;
+  left: calc(50% - 5px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tour-body {
+  padding: 18px 20px;
+}
+
+.tour-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.tour-desc {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.tour-math {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px 10px;
+  border-radius: var(--r-1);
+  color: #a5b4fc;
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  word-break: break-all;
+}
+
+.tour-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-skip {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+  transition: color 0.15s;
+}
+.btn-skip:hover {
+  color: #f43f5e;
+}
+
+.btn-prev {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--r-2);
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: border-color 0.15s;
+}
+.btn-prev:hover {
+  border-color: var(--border-strong);
+}
+
+.btn-next {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-2);
+  padding: 6px 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+}
+.btn-next:hover {
+  background: var(--accent-hover);
+}
+
+.tour-pagination {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tour-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.tour-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.tour-dot.active {
+  background: var(--accent);
+  width: 12px;
+  border-radius: 3px;
+}
+
+.tour-progress-text {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+
 
