@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .schema import PDESPayload, SolveResult
-from .solvers import ADAPTERS, dispatch
 
 if TYPE_CHECKING:
     import webview
@@ -29,6 +28,7 @@ class Api:
     # ── solving ──────────────────────────────────────────────────────
     def solve(self, payload: PDESPayload) -> SolveResult:
         """Run the pdesolver pipeline. Returns the discretized field(s)."""
+        from .solvers import dispatch
         t0 = time.perf_counter()
         result = dispatch(payload)
         result["meta"]["elapsed_ms"] = int((time.perf_counter() - t0) * 1000)
@@ -55,18 +55,61 @@ class Api:
         )
         return result[0] if result else None
 
-    def save_dialog(self) -> str | None:
+    def save_dialog(self, filename: str = "problem.json") -> str | None:
         if not self._window:
             return None
+        ext = filename.split(".")[-1].lower() if "." in filename else ""
+        if ext == "json":
+            file_types = ("pdesolver JSON (*.json)", "All files (*.*)")
+        elif ext == "csv":
+            file_types = ("CSV file (*.csv)", "All files (*.*)")
+        elif ext == "png":
+            file_types = ("PNG Image (*.png)", "All files (*.*)")
+        else:
+            file_types = ("All files (*.*)",)
+
         result = self._window.create_file_dialog(
             dialog_type=20,  # SAVE_DIALOG
-            save_filename="problem.json",
+            save_filename=filename,
+            file_types=file_types,
         )
         return result if isinstance(result, str) else (result[0] if result else None)
+
+    # ── window controls ──────────────────────────────────────────────
+    def minimize(self) -> None:
+        if self._window:
+            self._window.minimize()
+
+    def maximize(self) -> None:
+        if self._window:
+            if self._window.state == "maximized":
+                self._window.restore()
+            else:
+                self._window.maximize()
+
+    def close(self) -> None:
+        if self._window:
+            self._window.destroy()
+
+    def resize(self, width: int, height: int) -> None:
+        if self._window:
+            self._window.resize(width, height)
+
+    def save_csv(self, path: str, content: str) -> bool:
+        Path(path).write_text(content, encoding="utf-8")
+        return True
+
+    def save_png(self, path: str, base64_content: str) -> bool:
+        import base64
+        if "," in base64_content:
+            base64_content = base64_content.split(",", 1)[1]
+        Path(path).write_bytes(base64.b64decode(base64_content))
+        return True
 
     # ── environment probes ──────────────────────────────────────────
     def environment(self) -> dict:
         """Tell the UI what's available — used to hide unavailable solvers."""
+        from .solvers import ADAPTERS
         gpu_available = False
         try:
             import cupy  # noqa: F401

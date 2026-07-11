@@ -18,8 +18,14 @@ interface PywebviewApi {
   save_json: (path: string, payload: PDESPayload, result: SolveResult) => Promise<boolean>;
   load_json: (path: string) => Promise<{ payload: PDESPayload; result: SolveResult | null }>;
   open_dialog: () => Promise<string | null>;
-  save_dialog: () => Promise<string | null>;
+  save_dialog: (filename?: string) => Promise<string | null>;
   environment: () => Promise<Environment>;
+  minimize: () => void;
+  maximize: () => void;
+  close: () => void;
+  resize: (width: number, height: number) => void;
+  save_csv: (path: string, content: string) => Promise<boolean>;
+  save_png: (path: string, base64_content: string) => Promise<boolean>;
 }
 
 function api(): PywebviewApi | null {
@@ -31,6 +37,30 @@ function api(): PywebviewApi | null {
 export const bridge = {
   isDesktop(): boolean {
     return api() !== null;
+  },
+
+  minimize(): void {
+    api()?.minimize();
+  },
+
+  maximize(): void {
+    api()?.maximize();
+  },
+
+  close(): void {
+    api()?.close();
+  },
+
+  resize(width: number, height: number): void {
+    api()?.resize(width, height);
+  },
+
+  async saveCsv(path: string, content: string): Promise<boolean> {
+    return api()?.save_csv(path, content) ?? false;
+  },
+
+  async savePng(path: string, base64Content: string): Promise<boolean> {
+    return api()?.save_png(path, base64Content) ?? false;
   },
 
   async solve(payload: PDESPayload): Promise<SolveResult> {
@@ -72,8 +102,8 @@ export const bridge = {
     return api()?.open_dialog() ?? null;
   },
 
-  async saveDialog(): Promise<string | null> {
-    return api()?.save_dialog() ?? null;
+  async saveDialog(filename?: string): Promise<string | null> {
+    return api()?.save_dialog(filename) ?? null;
   },
 
   async environment(): Promise<Environment> {

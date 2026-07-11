@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useStore, toPayload, type SystemConfig, type PDEConfig } from "../../state/store";
 import { heatPreset } from "../../gallery/examples";
 import { Drawer } from "../../components/Drawer";
@@ -109,6 +109,53 @@ export function DesktopShell() {
     resetRun();
     setUI({ dirty: false });
   }, [resetRun, setUI]);
+
+  const [isResizing, setIsResizing] = useState<"e" | "s" | "se" | null>(null);
+  const resizeRef = useRef({ initialWidth: 0, initialHeight: 0, initialScreenX: 0, initialScreenY: 0 });
+
+  const handleResizeStart = (e: React.MouseEvent, direction: "e" | "s" | "se") => {
+    e.preventDefault();
+    setIsResizing(direction);
+    resizeRef.current = {
+      initialWidth: window.innerWidth,
+      initialHeight: window.innerHeight,
+      initialScreenX: e.screenX,
+      initialScreenY: e.screenY,
+    };
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.screenX - resizeRef.current.initialScreenX;
+      const deltaY = e.screenY - resizeRef.current.initialScreenY;
+      
+      let newWidth = resizeRef.current.initialWidth;
+      let newHeight = resizeRef.current.initialHeight;
+
+      if (isResizing === "e" || isResizing === "se") {
+        newWidth = Math.max(1100, resizeRef.current.initialWidth + deltaX);
+      }
+      if (isResizing === "s" || isResizing === "se") {
+        newHeight = Math.max(700, resizeRef.current.initialHeight + deltaY);
+      }
+
+      bridge.resize(newWidth, newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(null);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -448,6 +495,9 @@ export function DesktopShell() {
           ⚙ Tweaks
         </button>
       </div>
+      <div className="win-resize-e" onMouseDown={(e) => handleResizeStart(e, "e")} />
+      <div className="win-resize-s" onMouseDown={(e) => handleResizeStart(e, "s")} />
+      <div className="win-resize-se" onMouseDown={(e) => handleResizeStart(e, "se")} />
     </div>
   );
 }
