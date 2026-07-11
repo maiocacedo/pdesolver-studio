@@ -24,6 +24,9 @@ export interface MenuActions {
   gallery: () => void;
   history: () => void;
   about: () => void;
+  dictionary: () => void;
+  discretize: () => void;
+  startTour?: () => void;
 }
 
 export interface MenuView {
@@ -105,7 +108,7 @@ export function MenuBar({ actions, view }: Props) {
         <Item label="Run" shortcut="F5" onClick={actions.run} />
         <Item label="Stop" shortcut="Shift+F5" disabled />
         <div className="menu-sep" />
-        <Item label="Discretize only" onClick={actions.run} />
+        <Item label="Discretize only" onClick={actions.discretize} />
         <div className="menu-sep" />
         <Item label="Method: BDF-2" checked={view.method === "bdf2"} onClick={() => actions.setMethod("bdf2")} />
         <Item label="Method: Crank–Nicolson" checked={view.method === "CN"} onClick={() => actions.setMethod("CN")} />
@@ -123,8 +126,10 @@ export function MenuBar({ actions, view }: Props) {
         <Item label="Advanced mode" checked={view.advanced} onClick={actions.toggleAdvanced} />
       </Menu>
       <Menu id="help" label="Help">
+        <Item label="Interactive Tour" onClick={actions.startTour} />
         <Item label="Documentation" onClick={() => {}} />
         <Item label="Keyboard shortcuts" onClick={() => {}} />
+        <Item label="Inspector dictionary" onClick={actions.dictionary} />
         <div className="menu-sep" />
         <Item label="About pdesolver studio (em desenvolvimento)…" onClick={actions.about} />
       </Menu>
