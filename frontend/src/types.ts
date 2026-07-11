@@ -45,12 +45,12 @@ export interface SolveSpec {
   nt: number;
 }
 
-/** A system of PDEs plus run config. `pdes.length >= 1` always. */
 export interface PDESPayload {
   pdes: PDEPayload[];
   disc_n: number[];
   discretize: DiscretizeSpec;
   solve: SolveSpec;
+  discretize_only?: boolean;
 }
 
 export interface FieldOut {

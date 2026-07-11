@@ -4,14 +4,66 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>pdesolver studio (em desenvolvimento)</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=STIX+Two+Text:ital,wght@0,400;0,500;1,400;1,500&display=swap"
-    rel="stylesheet"
-  />
 </head>
 <body>
+  <div id="splash" style="
+    position: fixed;
+    inset: 0;
+    background: #0f111a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    color: #e2e8f4;
+    font-family: system-ui, -apple-system, sans-serif;
+  ">
+    <div style="
+      font-size: 72px;
+      font-weight: 300;
+      font-family: Georgia, serif;
+      background: linear-gradient(135deg, oklch(0.65 0.14 265), oklch(0.68 0.13 195));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 16px;
+      animation: pulse 2s infinite ease-in-out;
+    ">∂</div>
+    <div style="
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      opacity: 0.85;
+    ">pdesolver studio</div>
+    <div style="
+      width: 140px;
+      height: 2px;
+      background: rgba(226, 232, 244, 0.1);
+      border-radius: 1px;
+      overflow: hidden;
+      position: relative;
+    ">
+      <div style="
+        position: absolute;
+        height: 100%;
+        width: 60px;
+        background: oklch(0.65 0.14 265);
+        left: -60px;
+        animation: loading-bar 1.5s infinite linear;
+      "></div>
+    </div>
+    <style>
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(100, 100, 255, 0)); }
+        50% { transform: scale(1.08); filter: drop-shadow(0 0 15px rgba(100, 100, 255, 0.3)); }
+      }
+      @keyframes loading-bar {
+        0% { left: -60px; }
+        100% { left: 140px; }
+      }
+    </style>
+  </div>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>

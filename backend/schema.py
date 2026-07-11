@@ -4,7 +4,7 @@ Mirrors `frontend/src/types.ts`. **Both files must change together.**
 """
 from __future__ import annotations
 
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 
 BCType = Literal["Dirichlet", "Neumann", "Robin"]
@@ -54,6 +54,7 @@ class PDESPayload(TypedDict):
     disc_n: list[int]                      # one entry per spatial variable
     discretize: DiscretizeSpec
     solve: SolveSpec
+    discretize_only: NotRequired[bool]
 
 
 class FieldMeta(TypedDict, total=False):

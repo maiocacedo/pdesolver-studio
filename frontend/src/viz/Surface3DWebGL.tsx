@@ -282,10 +282,69 @@ export function Surface3DWebGL({ field, palette = "viridis", tIndex = 0 }: Props
     gridHelper.position.y = -heightScale / 2;
     scene.add(gridHelper);
 
-    // Axes lines
-    const axesHelper = new THREE.AxesHelper(widthScale / 2);
-    axesHelper.position.set(-widthScale / 2, -heightScale / 2, -depthScale / 2);
+    // Custom monochrome axes lines
+    const size = widthScale / 2;
+    const theme = document.documentElement.getAttribute("data-theme") || "light";
+    const colorHex = theme === "dark" ? [0.8, 0.8, 0.8] : [0.2, 0.2, 0.2];
+    const textColor = theme === "dark" ? "#e2e8f4" : "#1e293b";
+
+    const axesGeo = new THREE.BufferGeometry();
+    const axesPos = [
+      0, 0, 0,  size, 0, 0,
+      0, 0, 0,  0, size, 0,
+      0, 0, 0,  0, 0, size
+    ];
+    const axesColors = [];
+    for (let i = 0; i < 6; i++) {
+      axesColors.push(...colorHex);
+    }
+    axesGeo.setAttribute("position", new THREE.Float32BufferAttribute(axesPos, 3));
+    axesGeo.setAttribute("color", new THREE.Float32BufferAttribute(axesColors, 3));
+
+    const axesMat = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      linewidth: 2,
+    });
+    const axesHelper = new THREE.LineSegments(axesGeo, axesMat);
+    const ax0 = -widthScale / 2;
+    const ay0 = -heightScale / 2;
+    const az0 = -depthScale / 2;
+    axesHelper.position.set(ax0, ay0, az0);
     scene.add(axesHelper);
+
+    // Helper to create labels
+    const createTextSprite = (text: string, color: string) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext("2d")!;
+      ctx.font = "Bold 48px system-ui, sans-serif";
+      ctx.fillStyle = color;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, 32, 32);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      const mat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(mat);
+      sprite.scale.set(widthScale * 0.08, widthScale * 0.08, 1);
+      return sprite;
+    };
+
+    // Label X
+    const labelX = createTextSprite("X", textColor);
+    labelX.position.set(ax0 + size + widthScale * 0.05, ay0, az0);
+    scene.add(labelX);
+
+    // Label Y
+    const labelY = createTextSprite("Y", textColor);
+    labelY.position.set(ax0, ay0 + size + heightScale * 0.05, az0);
+    scene.add(labelY);
+
+    // Label Z
+    const labelZ = createTextSprite("Z", textColor);
+    labelZ.position.set(ax0, ay0, az0 + size + depthScale * 0.05);
+    scene.add(labelZ);
 
     // 1D Frontier curve line highlight
     let line: THREE.Line | null = null;

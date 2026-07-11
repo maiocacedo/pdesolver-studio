@@ -14,19 +14,16 @@ from __future__ import annotations
 from typing import Callable
 
 from ..schema import PDESPayload, SolveResult
-from . import heat
-
-
 SolverFn = Callable[[PDESPayload], SolveResult]
 
 
-ADAPTERS: dict[str, SolverFn] = {
-    "heat": heat.solve,
+ADAPTERS: dict[str, str] = {
+    "heat": "heat",
     # Coupled diffusion-type systems (reaction-diffusion, predator-prey, etc.)
     # share the same finite-difference machinery — route through the heat adapter.
-    "reaction_diffusion": heat.solve,
-    # "wave": wave.solve,
-    # "burgers": burgers.solve,
+    "reaction_diffusion": "heat",
+    # "wave": "wave",
+    # "burgers": "burgers",
 }
 
 
@@ -50,15 +47,17 @@ def classify(payload: PDESPayload) -> str:
 
 def dispatch(payload: PDESPayload) -> SolveResult:
     family = classify(payload)
-    adapter = ADAPTERS.get(family)
-    if adapter is None:
-        # Graceful fallback — tell the UI we don't know this family yet.
-        return SolveResult(
-            fields=[],
-            meta={
-                "converged": False,
-                "elapsed_ms": 0,
-                "backend": "numpy",
-            },
-        )
-    return adapter(payload)
+    adapter_name = ADAPTERS.get(family)
+    if adapter_name == "heat":
+        from . import heat
+        return heat.solve(payload)
+
+    # Graceful fallback — tell the UI we don't know this family yet.
+    return SolveResult(
+        fields=[],
+        meta={
+            "converged": False,
+            "elapsed_ms": 0,
+            "backend": "numpy",
+        },
+    )

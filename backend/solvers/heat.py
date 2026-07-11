@@ -5,13 +5,13 @@ Handles both 1-D (disc_n=[nx]) and 2-D (disc_n=[nx, ny]) problems.
 from __future__ import annotations
 
 import time
-import numpy as np
 
 from ..schema import PDESPayload, SolveResult, FieldOut
-from pdesolver import PDE, PDES
 
 
 def solve(payload: PDESPayload) -> SolveResult:
+    import numpy as np
+    from pdesolver import PDE, PDES
     t0 = time.perf_counter()
     is_2d = len(payload["disc_n"]) > 1
 
@@ -38,17 +38,24 @@ def solve(payload: PDESPayload) -> SolveResult:
 
     sistema = PDES(pdes=pdes, disc_n=payload["disc_n"])
     sistema.discretize(method=payload["discretize"]["method"])
-    sistema.solve(
-        method=payload["solve"]["method"],
-        tf=payload["solve"]["tf"],
-        nt=payload["solve"]["nt"],
-    )
 
-    _u_final, final_list = sistema.results
-
-    tf = payload["solve"]["tf"]
-    nt = payload["solve"]["nt"]
-    ts = np.linspace(0.0, tf, nt + 1).tolist()
+    if payload.get("discretize_only"):
+        flat_grid_size = len(sistema.ic) // len(payload["pdes"])
+        final_list = []
+        for i in range(len(payload["pdes"])):
+            ic_for_pde = sistema.ic[i * flat_grid_size : (i + 1) * flat_grid_size]
+            final_list.append([ic_for_pde])
+        ts = [0.0]
+    else:
+        sistema.solve(
+            method=payload["solve"]["method"],
+            tf=payload["solve"]["tf"],
+            nt=payload["solve"]["nt"],
+        )
+        _u_final, final_list = sistema.results
+        tf = payload["solve"]["tf"]
+        nt = payload["solve"]["nt"]
+        ts = np.linspace(0.0, tf, nt + 1).tolist()
 
     if is_2d:
         nx, ny = payload["disc_n"]
