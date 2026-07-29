@@ -2,10 +2,11 @@ import { useStore } from "../../state/store";
 import { Icon } from "../../components/Icon";
 
 interface Props {
+  open: boolean;
   onClose: () => void;
 }
 
-export function Inspector({ onClose }: Props) {
+export function Inspector({ open, onClose }: Props) {
   const system = useStore((s) => s.system);
   const run = useStore((s) => s.run);
 
@@ -28,7 +29,8 @@ export function Inspector({ onClose }: Props) {
   const cflOk = cfl <= 0.5;
 
   return (
-    <aside className="inspector">
+    <aside className="inspector" data-open={open ? "1" : "0"} aria-hidden={!open}>
+      <div className="inspector-inner">
       <div className="inspector-head">
         Inspector
         <span className="pin" onClick={onClose} title="Hide inspector">
@@ -102,6 +104,7 @@ export function Inspector({ onClose }: Props) {
             </div>
           </div>
         )}
+      </div>
       </div>
     </aside>
   );

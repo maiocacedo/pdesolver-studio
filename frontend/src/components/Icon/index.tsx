@@ -20,4 +20,7 @@ export const Icon = {
   Code: (p: P) => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" {...p}><path d="M5 4L2 7l3 3M9 4l3 3-3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   Mesh: (p: P) => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" {...p}><path d="M1 1h12v12H1zM1 5h12M1 9h12M5 1v12M9 1v12" stroke="currentColor" strokeWidth="1"/></svg>,
   Export: (p: P) => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" {...p}><path d="M7 1v8M4 5l3-4 3 4M2 11v1h10v-1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  Function: (p: P) => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" {...p}><path d="M8.5 2.2A1.6 1.6 0 006 3.6V5M4 6.2h4.2M4.5 11.8l5-5.6M9.5 11.8l-5-5.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  Inspect: (p: P) => <svg width="14" height="14" viewBox="0 0 14 14" fill="none" {...p}><circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.2"/><path d="M9 9l3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  Record: (p: P) => <svg width="12" height="12" viewBox="0 0 12 12" fill="none" {...p}><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="6" cy="6" r="2" fill="currentColor"/></svg>,
 };

@@ -539,9 +539,9 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
               className="panel-action"
               onClick={() => exportPanelImage(panelId as any)}
               title="Export Image"
-              style={{ display: "flex", alignItems: "center", gap: 4 }}
+              style={{ display: "flex", alignItems: "center", gap: 5 }}
             >
-              📥 Exportar
+              <Icon.Export /> Exportar
             </button>
           )}
           <button
@@ -672,9 +672,9 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                   className="panel-action"
                   onClick={() => exportPanelImage(tab)}
                   title="Export Image"
-                  style={{ display: "flex", alignItems: "center", gap: 4, height: "fit-content" }}
+                  style={{ display: "flex", alignItems: "center", gap: 5, height: "fit-content" }}
                 >
-                  📥 Exportar Gráfico
+                  <Icon.Export /> Exportar Gráfico
                 </button>
               )}
             </div>
@@ -827,7 +827,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                     boxShadow: "0 0 8px oklch(0.65 0.25 20)"
                   }} />
                 ) : (
-                  <span style={{ fontSize: 11 }}>📹 Rec</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}><Icon.Record /> Rec</span>
                 )}
               </button>
             </div>

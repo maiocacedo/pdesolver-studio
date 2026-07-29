@@ -412,9 +412,7 @@ export function DesktopShell() {
           </button>
         </main>
 
-        {ui.showInspector && (
-          <Inspector onClose={() => setUI({ showInspector: false })} />
-        )}
+        <Inspector open={ui.showInspector} onClose={() => setUI({ showInspector: false })} />
       </div>
 
       <StatusBar projectPath={projectPath} />
