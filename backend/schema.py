@@ -4,7 +4,13 @@ Mirrors `frontend/src/types.ts`. **Both files must change together.**
 """
 from __future__ import annotations
 
-from typing import Literal, NotRequired, TypedDict
+import sys
+from typing import Literal, TypedDict
+
+if sys.version_info >= (3, 11):
+    from typing import NotRequired
+else:
+    from typing_extensions import NotRequired
 
 
 BCType = Literal["Dirichlet", "Neumann", "Robin"]
