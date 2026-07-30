@@ -11,6 +11,7 @@ import { AboutModal } from "./AboutModal";
 import { DictionaryModal } from "./DictionaryModal";
 import { ResizableSidebar } from "./ResizableSidebar";
 import { TourOverlay } from "./TourOverlay";
+import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { Sidebar } from "../../panels/Sidebar";
 import { VizPanel } from "../../viz/VizPanel";
 import { GalleryDrawer } from "../../gallery/GalleryDrawer";
@@ -30,6 +31,7 @@ const DEFAULT_TWEAKS: TweakValues = {
 export function DesktopShell() {
   const system = useStore((s) => s.system);
   const ui = useStore((s) => s.ui);
+  const runStatus = useStore((s) => s.run.status);
   const solve = useStore((s) => s.solve);
   const discretize = useStore((s) => s.discretize);
   const resetRun = useStore((s) => s.resetRun);
@@ -314,7 +316,9 @@ export function DesktopShell() {
         </ResizableSidebar>
 
         <main className="desktop-main" style={{ position: "relative" }}>
-          <VizPanel palette={tweaks.vizPalette as Palette} engine3D={tweaks.engine3D} />
+          <ErrorBoundary label="a visualização" resetKeys={[ui.vizTab, ui.layoutMode, runStatus]}>
+            <VizPanel palette={tweaks.vizPalette as Palette} engine3D={tweaks.engine3D} />
+          </ErrorBoundary>
           <button
             className="inspector-toggle-btn"
             onClick={actions.toggleInspector}

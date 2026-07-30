@@ -65,8 +65,11 @@ verdade para "arrumar tudo" — marcamos cada item conforme executamos.
   Auto-start só no 1º acesso (`localStorage` `pde-tour-seen`, marcada em `endTour`);
   re-abertura manual pelo menu Help; confirmação antes de resetar o preset quando
   há alterações não salvas (`ui.dirty`).
-- [ ] **C4 (Média)** — Sem Error Boundary (`App.tsx` / `viz/Surface3D*.tsx`).
-  **Sugestão:** boundary com fallback + "tentar de novo" em volta das visualizações.
+- [x] **C4 (Média)** — ~~Sem Error Boundary.~~ **FEITO (Item 6).**
+  `components/ErrorBoundary.tsx` (fallback recuperável + "Tentar novamente" +
+  auto-reset por `resetKeys`) envolvendo o `VizPanel` no `DesktopShell`
+  (`resetKeys=[vizTab, layoutMode, runStatus]`). 3 testes jsdom cobrindo
+  fallback/recuperação. Sidebar/inspetor/menus seguem vivos num crash de gráfico.
 - [ ] **C3 (Baixa)** — CFL exibido para esquemas implícitos (`Inspector.tsx`, `cfl ≤ 0.5`).
   **Sugestão:** contextualizar o indicador conforme o integrador (informativo p/ BDF-2/CN).
 
