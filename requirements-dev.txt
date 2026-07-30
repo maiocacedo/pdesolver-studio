@@ -1,0 +1,4 @@
+# Development / test dependencies (runtime deps live in requirements.txt).
+# Backend tests also need numpy + pdesolver from requirements.txt for the
+# heat-solver path; classify/dispatch tests run without them.
+pytest>=8

@@ -34,10 +34,10 @@ verdade para "arrumar tudo" — marcamos cada item conforme executamos.
 
 ### 01 · Arquitetura & estrutura
 
-- [ ] **A1 (Média)** — Lógica de I/O embutida no shell.
-  `shell/desktop/DesktopShell.tsx` (~200 linhas no objeto `actions`).
-  *Import/export JSON/PNG/CSV + `payloadToSystemConfig` inline no componente de layout.*
-  **Sugestão:** extrair para módulo `io/` (ou hooks `useProjectIO`).
+- [~] **A1 (Média)** — Lógica de I/O embutida no shell. _Parcial:_ `payloadToSystemConfig`
+  extraído para `state/payload.ts` (Item 1). Falta mover import/export JSON/PNG/CSV.
+  `shell/desktop/DesktopShell.tsx`.
+  **Sugestão:** extrair o restante para módulo `io/` (ou hooks `useProjectIO`).
 - [ ] **A2 (Média)** — Exportação de imagem duplicada.
   `DesktopShell.exportPng` ↔ `VizPanel.exportPanelImage` (helper `downloadUri` copiado; fallback 800×500 repetido).
   **Sugestão:** um único `exportImage(container, name)` em `viz/exportImage.ts`.
@@ -97,9 +97,10 @@ verdade para "arrumar tudo" — marcamos cada item conforme executamos.
 
 ### 07 · Testes & CI
 
-- [ ] **T1 (Alta)** — Nenhum teste automatizado; CI só faz build.
-  **Alvos:** round-trip `toPayload`↔`payloadToSystemConfig`, `validateSystemConfig`, dispatch dos solvers.
-  **Sugestão:** Vitest (frontend) + pytest (backend), começando pelos mapeadores; passo de teste no GitHub Actions.
+- [x] **T1 (Alta)** — ~~Nenhum teste automatizado; CI só faz build.~~ **FEITO (Item 1).**
+  Vitest (18 testes: round-trip 1D/2D, `validateSystemConfig`, reducers do store) +
+  pytest (6 testes: classify/dispatch + solver heat). Workflow `.github/workflows/test.yml`
+  roda ambos em push/PR. Scripts: `npm test` · `py -m pytest`.
 
 ---
 

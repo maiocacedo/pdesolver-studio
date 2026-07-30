@@ -419,7 +419,7 @@ export const useStore = create<Store>((set, get) => ({
   }),
 }));
 
-function validateSystemConfig(sys: SystemConfig) {
+export function validateSystemConfig(sys: SystemConfig) {
   const is2D = !!sys.domain.ymin && sys.mesh.ny !== undefined;
 
   for (const pde of sys.pdes) {
