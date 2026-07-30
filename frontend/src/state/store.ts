@@ -17,6 +17,7 @@ import type {
 } from "../types";
 import { bridge } from "../api/pywebview";
 import { heatPreset, wave1DPreset } from "../gallery/examples";
+import { TOUR_STEPS } from "./tourSteps";
 
 // ── per-PDE config (UI shape — slightly richer than PDEPayload) ─────
 export interface PDEConfig {
@@ -281,50 +282,16 @@ export const useStore = create<Store>((set, get) => ({
     set((s) => ({ ui: { ...s.ui, tourActive: false, tourStep: 0 } }));
   },
 
+  // The per-step UI choreography (which viz tab / layout / inspector each step
+  // needs) is colocated with the steps in tourSteps.tsx via `onEnter`.
   nextTourStep: () => set((s) => {
-    const nextStep = s.ui.tourStep + 1;
-    let patch: Partial<UIState> = { tourStep: nextStep };
-
-    if (nextStep === 3) {
-      patch.vizTab = "plot1d";
-      patch.layoutMode = "tabs";
-    } else if (nextStep === 4) {
-      patch.vizTab = "heatmap";
-      patch.layoutMode = "tabs";
-    } else if (nextStep === 5) {
-      patch.vizTab = "plot3d";
-      patch.layoutMode = "tabs";
-    } else if (nextStep === 6) {
-      patch.layoutMode = "grid";
-      patch.maximizedPanel = null;
-    } else if (nextStep === 7) {
-      patch.showInspector = true;
-    }
-
-    return { ui: { ...s.ui, ...patch } };
+    const nextStep = Math.min(TOUR_STEPS.length - 1, s.ui.tourStep + 1);
+    return { ui: { ...s.ui, tourStep: nextStep, ...(TOUR_STEPS[nextStep]?.onEnter ?? {}) } };
   }),
 
   prevTourStep: () => set((s) => {
     const prevStep = Math.max(0, s.ui.tourStep - 1);
-    let patch: Partial<UIState> = { tourStep: prevStep };
-
-    if (prevStep === 3) {
-      patch.vizTab = "plot1d";
-      patch.layoutMode = "tabs";
-    } else if (prevStep === 4) {
-      patch.vizTab = "heatmap";
-      patch.layoutMode = "tabs";
-    } else if (prevStep === 5) {
-      patch.vizTab = "plot3d";
-      patch.layoutMode = "tabs";
-    } else if (prevStep === 6) {
-      patch.layoutMode = "grid";
-      patch.maximizedPanel = null;
-    } else if (prevStep === 7) {
-      patch.showInspector = true;
-    }
-
-    return { ui: { ...s.ui, ...patch } };
+    return { ui: { ...s.ui, tourStep: prevStep, ...(TOUR_STEPS[prevStep]?.onEnter ?? {}) } };
   }),
 
   solve: async () => {
