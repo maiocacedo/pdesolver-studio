@@ -5,11 +5,13 @@ import { Latex, pdeToLatex } from "../equation/Latex";
 import { Field, NumberPair } from "../components/Field";
 import { ConfigCard } from "../components/Card";
 import { FEATURES } from "../features";
+import { useT } from "../i18n/i18n";
 import type { BCType } from "../types";
 
 type BCSide = "west" | "east" | "north" | "south";
 
 export function Sidebar() {
+  const { t } = useT();
   const system = useStore((s) => s.system);
   const uiMode = useStore((s) => s.ui.mode);
   const setPdeField = useStore((s) => s.setPdeField);
@@ -88,7 +90,7 @@ export function Sidebar() {
       )}
 
       {/* ── CARD 1: EQUATIONS ────────────────────────────────────────── */}
-      <ConfigCard step="1" title="Equations" complete={!!activePde.ic}>
+      <ConfigCard step="1" title={t("sidebar.card.equations")} complete={!!activePde.ic}>
         {FEATURES.PDE_SYSTEMS && (
           <Field label="System Functions">
             <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
@@ -226,7 +228,7 @@ export function Sidebar() {
       </ConfigCard>
 
       {/* ── CARD 2: NUMERIC (MESH & SOLVER) ──────────────────────────── */}
-      <ConfigCard step="2" title="Numeric" complete>
+      <ConfigCard step="2" title={t("sidebar.card.numeric")} complete>
         <Field label="Spatial domain (x)">
           <NumberPair
             a={domain.xmin} b={domain.xmax}
@@ -322,7 +324,7 @@ export function Sidebar() {
             disabled={status === "solving"}
             style={{ width: "100%", justifyContent: "center", gap: 6 }}
           >
-            <span>⛭</span> {status === "solving" ? "Processando..." : "Apenas Discretizar"}
+            <span>⛭</span> {status === "solving" ? t("sidebar.processing") : t("sidebar.discretizeOnly")}
           </button>
         </div>
       </ConfigCard>

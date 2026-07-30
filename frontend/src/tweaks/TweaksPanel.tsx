@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import type { Palette } from "../viz/colormap";
+import { useT } from "../i18n/i18n";
 
 export interface TweakValues {
   accent: string;
@@ -48,6 +49,7 @@ function Seg<T extends SegOption>({
 }
 
 export function TweaksPanel({ open, onClose, values, onChange }: Props) {
+  const { t, lang, setLang } = useT();
   const dragRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef({ x: 16, y: 16 });
 
@@ -166,6 +168,22 @@ export function TweaksPanel({ open, onClose, values, onChange }: Props) {
             onChange={(v) => onChange("engine3D", v)}
           />
         ))}
+        {section(t("tweaks.language"))}
+        <div style={{
+          display: "flex", background: "var(--surface-sunk)", borderRadius: 8,
+          padding: 2, border: "1px solid var(--border-soft)",
+        }}>
+          {(["pt", "en"] as const).map((l) => (
+            <button key={l} type="button" onClick={() => setLang(l)} style={{
+              flex: 1, border: 0, borderRadius: 6, padding: "3px 8px",
+              fontSize: 11, fontFamily: "inherit", cursor: "default",
+              background: lang === l ? "var(--surface)" : "transparent",
+              boxShadow: lang === l ? "var(--shadow-1)" : "none",
+              fontWeight: lang === l ? 600 : 400,
+              color: lang === l ? "var(--text)" : "var(--text-muted)",
+            }}>{l === "pt" ? "Português" : "English"}</button>
+          ))}
+        </div>
       </div>
     </div>
   );

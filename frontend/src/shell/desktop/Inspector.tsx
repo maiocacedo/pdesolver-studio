@@ -1,5 +1,6 @@
 import { useStore } from "../../state/store";
 import { Icon } from "../../components/Icon";
+import { useT } from "../../i18n/i18n";
 
 interface Props {
   open: boolean;
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function Inspector({ open, onClose }: Props) {
+  const { t } = useT();
   const system = useStore((s) => s.system);
   const run = useStore((s) => s.run);
 
@@ -42,14 +44,14 @@ export function Inspector({ open, onClose }: Props) {
     <aside className="inspector" data-open={open ? "1" : "0"} aria-hidden={!open}>
       <div className="inspector-inner">
       <div className="inspector-head">
-        Inspector
+        {t("inspector.title")}
         <span className="pin" onClick={onClose} title="Hide inspector">
           <Icon.Close />
         </span>
       </div>
       <div className="inspector-body">
         <div className="inspector-section">
-          <div className="inspector-section-title">Problem</div>
+          <div className="inspector-section-title">{t("inspector.section.problem")}</div>
           <div className="inspector-kv">
             <span className="k" title="A Equação Diferencial Parcial sendo resolvida">Equation</span>
             <span className="v" style={{ wordBreak: "break-all", whiteSpace: "normal", fontFamily: "var(--font-mono)", fontSize: 11 }}>{activePde.eq}</span>
@@ -69,7 +71,7 @@ export function Inspector({ open, onClose }: Props) {
         </div>
 
         <div className="inspector-section">
-          <div className="inspector-section-title">Mesh</div>
+          <div className="inspector-section-title">{t("inspector.section.mesh")}</div>
           <div className="inspector-kv">
             <span className="k" title="Número de pontos de malha na direção x">nₓ</span><span className="v">{mesh.nx}</span>
             {is2D && (
@@ -93,7 +95,7 @@ export function Inspector({ open, onClose }: Props) {
         </div>
 
         <div className="inspector-section">
-          <div className="inspector-section-title">Solver</div>
+          <div className="inspector-section-title">{t("inspector.section.solver")}</div>
           <div className="inspector-kv">
             <span className="k" title="Método de aproximação das derivadas espaciais">Discretization</span><span className="v">{scheme.disc}</span>
             <span className="k" title="Método de integração temporal">Integrator</span><span className="v">{scheme.time}</span>
@@ -104,7 +106,7 @@ export function Inspector({ open, onClose }: Props) {
 
         {field && (
           <div className="inspector-section">
-            <div className="inspector-section-title">Last result</div>
+            <div className="inspector-section-title">{t("inspector.section.lastResult")}</div>
             <div className="inspector-kv">
               <span className="k" title="Valor mínimo calculado do campo em todo o domínio">min(u)</span><span className="v">{field.min.toExponential(3)}</span>
               <span className="k" title="Valor máximo calculado do campo em todo o domínio">max(u)</span><span className="v">{field.max.toExponential(3)}</span>

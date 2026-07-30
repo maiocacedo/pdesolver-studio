@@ -9,6 +9,8 @@ import { Heatmap2D } from "./Heatmap2D";
 import { SolverConsole } from "./SolverConsole";
 import { exportContainerImage } from "./exportImage";
 import { toast } from "../components/toast/toastStore";
+import { useT } from "../i18n/i18n";
+import type { MsgKey } from "../i18n/messages";
 import type { Palette } from "./colormap";
 
 // 3D surfaces (and their Three.js dependency) are code-split: the chunk loads
@@ -92,6 +94,7 @@ function nearestTimeIndex(ts: number[], target: number): number {
 }
 
 function Loading3D() {
+  const { t } = useT();
   return (
     <div style={{ textAlign: "center", color: "var(--text-muted)" }}>
       <div style={{
@@ -99,18 +102,19 @@ function Loading3D() {
         border: "2.5px solid var(--accent-faint)", borderTopColor: "var(--accent)",
         animation: "spin 0.7s linear infinite",
       }} />
-      <div style={{ fontSize: 12.5 }}>Preparando engine 3D…</div>
+      <div style={{ fontSize: 12.5 }}>{t("viz.loading3d")}</div>
     </div>
   );
 }
 
-const TABS: Array<{ id: VizTab; label: string; glyph: ReactNode }> = [
-  { id: "plot1d", label: "1D profile", glyph: <Icon.Plot /> },
-  { id: "heatmap", label: "Heatmap", glyph: <Icon.Heatmap /> },
-  { id: "plot3d", label: "Surface 3D", glyph: <Icon.Cube /> },
+const TABS: Array<{ id: VizTab; labelKey: MsgKey; glyph: ReactNode }> = [
+  { id: "plot1d", labelKey: "viz.tab.plot1d", glyph: <Icon.Plot /> },
+  { id: "heatmap", labelKey: "viz.tab.heatmap", glyph: <Icon.Heatmap /> },
+  { id: "plot3d", labelKey: "viz.tab.plot3d", glyph: <Icon.Cube /> },
 ];
 
 export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engine3D = "auto" }: Props) {
+  const { t } = useT();
   const storeTab = useStore((s) => s.ui.vizTab);
   const setUI = useStore((s) => s.setUI);
   const status = useStore((s) => s.run.status);
@@ -363,13 +367,13 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
   const getPanelTitle = (panelId: "plot1d" | "heatmap" | "plot3d" | "console") => {
     switch (panelId) {
       case "plot1d":
-        return "1D Profile";
+        return t("viz.panel.plot1d");
       case "heatmap":
-        return is2D ? "Heatmap 2D — u(x,y)" : "Heatmap 1D";
+        return is2D ? "Heatmap 2D — u(x,y)" : t("viz.panel.heatmap");
       case "plot3d":
-        return is2D ? "Surface 3D — u(x,y,t)" : "Surface 3D";
+        return is2D ? "Surface 3D — u(x,y,t)" : t("viz.panel.plot3d");
       case "console":
-        return "Solver Statistics & Console";
+        return t("viz.panel.console");
     }
   };
 
@@ -420,7 +424,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
               title="Export Image"
               style={{ display: "flex", alignItems: "center", gap: 5 }}
             >
-              <Icon.Export /> Exportar
+              <Icon.Export /> {t("viz.export")}
             </button>
           )}
           <button
@@ -428,7 +432,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
             onClick={() => toggleMaximizedPanel(panelId)}
             title={isMax ? "Restore grid layout" : "Maximize panel"}
           >
-            {isMax ? "↙ Restore" : "↗ Maximize"}
+            {isMax ? `↙ ${t("viz.restore")}` : `↗ ${t("viz.maximize")}`}
           </button>
         </div>
       </div>
@@ -498,13 +502,13 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
             <button key={tb.id} className="tab" data-active={tab === tb.id ? "1" : "0"}
                     onClick={() => setTab(tb.id)}>
               <span className="tab-glyph">{tb.glyph}</span>
-              {tb.label}
+              {t(tb.labelKey)}
             </button>
           ))
         ) : (
           <div className="tab" data-active="1" style={{ cursor: "default" }}>
             <span className="tab-glyph"><Icon.Gallery /></span>
-            Dashboard Grid
+            {t("viz.layout.dashboard")}
           </div>
         )}
         <div style={{ flex: 1 }} />
@@ -513,9 +517,9 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
           {layoutMode === "tabs" && tab === "plot1d" && !empty && (
             <div className="seg" style={{ marginRight: 8, marginLeft: 8 }}>
               <button data-active={plotMode === "snapshots" ? "1" : "0"}
-                      onClick={() => setPlotMode("snapshots")}>Snapshot</button>
+                      onClick={() => setPlotMode("snapshots")}>{t("viz.snapshot")}</button>
               <button data-active={plotMode === "all" ? "1" : "0"}
-                      onClick={() => setPlotMode("all")}>All profiles</button>
+                      onClick={() => setPlotMode("all")}>{t("viz.allProfiles")}</button>
             </div>
           )}
           
@@ -523,11 +527,11 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
             <button data-active={layoutMode === "tabs" ? "1" : "0"}
                     onClick={() => {
                       if (layoutMode === "grid") toggleLayoutMode();
-                    }}>Tabs View</button>
+                    }}>{t("viz.layout.tabs")}</button>
             <button data-active={layoutMode === "grid" ? "1" : "0"}
                     onClick={() => {
                       if (layoutMode === "tabs") toggleLayoutMode();
-                    }}>Grid View</button>
+                    }}>{t("viz.layout.grid")}</button>
           </div>
         </div>
       </div>
@@ -570,7 +574,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                   title="Export Image"
                   style={{ display: "flex", alignItems: "center", gap: 5, height: "fit-content" }}
                 >
-                  <Icon.Export /> Exportar Gráfico
+                  <Icon.Export /> {t("viz.exportChart")}
                 </button>
               )}
             </div>
@@ -713,7 +717,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                     boxShadow: "0 0 8px oklch(0.65 0.25 20)"
                   }} />
                 ) : (
-                  <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}><Icon.Record /> Rec</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}><Icon.Record /> {t("viz.rec")}</span>
                 )}
               </button>
             </div>
