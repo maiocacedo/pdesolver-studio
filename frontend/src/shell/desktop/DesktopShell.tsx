@@ -28,7 +28,12 @@ const DEFAULT_TWEAKS: TweakValues = {
   engine3D: "auto",
 };
 
-export function DesktopShell() {
+interface DesktopShellProps {
+  /** Called once after the shell has mounted (used to lift the loading screen). */
+  onReady?: () => void;
+}
+
+export function DesktopShell({ onReady }: DesktopShellProps = {}) {
   const system = useStore((s) => s.system);
   const ui = useStore((s) => s.ui);
   const runStatus = useStore((s) => s.run.status);
@@ -39,6 +44,9 @@ export function DesktopShell() {
   const setScheme = useStore((s) => s.setScheme);
   const loadPreset = useStore((s) => s.loadPreset);
   const startTour = useStore((s) => s.startTour);
+
+  // Signal the App that the studio has mounted, so the loading screen can lift.
+  useEffect(() => { onReady?.(); }, [onReady]);
 
   // Auto-start the guided tour only on the very first launch. After it's been
   // finished or skipped once (endTour sets the flag), it stays available via the
