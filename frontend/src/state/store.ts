@@ -107,6 +107,9 @@ interface Store {
   prevTourStep(): void;
 }
 
+/** localStorage flag: set once the guided tour has been finished or skipped. */
+export const TOUR_SEEN_KEY = "pde-tour-seen";
+
 export const useStore = create<Store>((set, get) => ({
   system: heatPreset(),
   ui: {
@@ -270,9 +273,13 @@ export const useStore = create<Store>((set, get) => ({
     }));
   },
 
-  endTour: () => set((s) => ({
-    ui: { ...s.ui, tourActive: false, tourStep: 0 }
-  })),
+  endTour: () => {
+    // Remember that the tour was seen so it doesn't auto-start again.
+    if (typeof localStorage !== "undefined") {
+      try { localStorage.setItem(TOUR_SEEN_KEY, "1"); } catch { /* ignore */ }
+    }
+    set((s) => ({ ui: { ...s.ui, tourActive: false, tourStep: 0 } }));
+  },
 
   nextTourStep: () => set((s) => {
     const nextStep = s.ui.tourStep + 1;

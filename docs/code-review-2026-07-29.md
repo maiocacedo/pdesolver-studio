@@ -61,9 +61,10 @@ verdade para "arrumar tudo" — marcamos cada item conforme executamos.
   `fakeBackend` marca `meta.approximate`; banner dismissível no topo da visualização
   (reaparece a cada solve aproximado), rótulo do console → "APROX (JS)" + linha `[WARN]`.
   Flag adicionada a `types.ts` e `schema.py` em sincronia.
-- [ ] **C2 (Média)** — Tour força-inicia e descarta estado.
-  `DesktopShell.tsx` `useEffect(startTour)` + `store.startTour` (substitui por `wave1DPreset()`).
-  **Sugestão:** gate por `localStorage`; só resetar preset após confirmação.
+- [x] **C2 (Média)** — ~~Tour força-inicia e descarta estado.~~ **FEITO (Item 5).**
+  Auto-start só no 1º acesso (`localStorage` `pde-tour-seen`, marcada em `endTour`);
+  re-abertura manual pelo menu Help; confirmação antes de resetar o preset quando
+  há alterações não salvas (`ui.dirty`).
 - [ ] **C4 (Média)** — Sem Error Boundary (`App.tsx` / `viz/Surface3D*.tsx`).
   **Sugestão:** boundary com fallback + "tentar de novo" em volta das visualizações.
 - [ ] **C3 (Baixa)** — CFL exibido para esquemas implícitos (`Inspector.tsx`, `cfl ≤ 0.5`).

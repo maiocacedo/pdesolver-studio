@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useStore, toPayload } from "../../state/store";
+import { useStore, toPayload, TOUR_SEEN_KEY } from "../../state/store";
 import { payloadToSystemConfig } from "../../state/payload";
 import { heatPreset } from "../../gallery/examples";
 import { Drawer } from "../../components/Drawer";
@@ -38,9 +38,22 @@ export function DesktopShell() {
   const loadPreset = useStore((s) => s.loadPreset);
   const startTour = useStore((s) => s.startTour);
 
+  // Auto-start the guided tour only on the very first launch. After it's been
+  // finished or skipped once (endTour sets the flag), it stays available via the
+  // Help menu but never forces itself on the user again.
   useEffect(() => {
-    startTour();
+    const seen = typeof localStorage !== "undefined" && localStorage.getItem(TOUR_SEEN_KEY);
+    if (!seen) startTour();
   }, [startTour]);
+
+  // Manual (re)launch from the menu: the tour loads the wave demo, so guard
+  // against silently discarding unsaved edits.
+  const handleStartTour = useCallback(() => {
+    if (ui.dirty && !window.confirm(
+      "O tour carrega o exemplo de onda e vai descartar as alterações não salvas. Continuar?"
+    )) return;
+    startTour();
+  }, [ui.dirty, startTour]);
 
   const [projectPath] = useState("pdesolver studio (em desenvolvimento) — unsaved");
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -269,7 +282,7 @@ export function DesktopShell() {
     about: () => setAboutOpen(true),
     dictionary: () => setDictionaryOpen(true),
     discretize: useCallback(() => { void discretize(); }, [discretize]),
-    startTour,
+    startTour: handleStartTour,
   };
 
   const menuView = {
