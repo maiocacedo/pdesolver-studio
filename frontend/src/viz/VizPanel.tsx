@@ -3,10 +3,11 @@ import type { ReactNode } from "react";
 import { useStore } from "../state/store";
 import type { FieldOut } from "../types";
 import { Icon } from "../components/Icon";
-import { bridge } from "../api/pywebview";
 import { Plot1D } from "./Plot1D";
 import { Heatmap } from "./Heatmap";
 import { Heatmap2D } from "./Heatmap2D";
+import { SolverConsole } from "./SolverConsole";
+import { exportContainerImage } from "./exportImage";
 import type { Palette } from "./colormap";
 
 // 3D surfaces (and their Three.js dependency) are code-split: the chunk loads
@@ -92,102 +93,6 @@ const TABS: Array<{ id: VizTab; label: string; glyph: ReactNode }> = [
   { id: "plot3d", label: "Surface 3D", glyph: <Icon.Cube /> },
 ];
 
-interface ConsoleProps {
-  status: "pristine" | "solving" | "solved" | "error";
-  lastRunMs: number;
-  error: string | null;
-  meta?: { converged: boolean; elapsed_ms: number; backend: string; approximate?: boolean } | null;
-  system: any;
-}
-
-function SolverConsole({ status, lastRunMs, error, meta, system }: ConsoleProps) {
-  const is2D = !!system.domain.ymin && system.mesh.ny !== undefined;
-  
-  const statStatus = status.toUpperCase();
-  const statBackend = meta?.approximate
-    ? "APROX (JS)"
-    : meta?.backend ? meta.backend.toUpperCase() : "N/A";
-  const statTime = status === "solved" ? `${lastRunMs.toFixed(1)} ms` : "N/A";
-  const statConverged = meta?.converged !== undefined ? (meta.converged ? "YES" : "NO") : "N/A";
-  const statGrid = is2D 
-    ? `${system.mesh.nx} × ${system.mesh.ny} × ${system.mesh.nt}`
-    : `${system.mesh.nx} × ${system.mesh.nt}`;
-
-  const lines: Array<{ text: string; type: "info" | "success" | "error" | "default" }> = [];
-  lines.push({ text: `[SYSTEM] Initialized PDESolver Studio (em desenvolvimento).`, type: "default" });
-  
-  if (status === "pristine") {
-    lines.push({ text: `[INFO] Ready to solve. Click "Run" or press F5 to start.`, type: "info" });
-  } else {
-    lines.push({ text: `[INFO] Launching solver backend...`, type: "info" });
-    lines.push({ 
-      text: `[INFO] Domain boundaries: X=[${system.domain.xmin}, ${system.domain.xmax}]${is2D ? ` Y=[${system.domain.ymin}, ${system.domain.ymax}]` : ""}`,
-      type: "default" 
-    });
-    lines.push({ 
-      text: `[INFO] Discretization scheme: ${system.scheme.disc.toUpperCase()} (mesh: ${statGrid})`, 
-      type: "default" 
-    });
-    lines.push({ 
-      text: `[INFO] Time integration scheme: ${system.scheme.time.toUpperCase()} (t0=${system.domain.t0}, tf=${system.domain.tf})`, 
-      type: "default" 
-    });
-    
-    if (status === "solving") {
-      lines.push({ text: `[INFO] Solving system equations...`, type: "info" });
-    } else if (status === "solved") {
-      lines.push({ text: `[SUCCESS] Simulation finished successfully.`, type: "success" });
-      if (meta?.approximate) {
-        lines.push({ text: `[WARN] Backend real ausente — solver JS aproximado (apenas difusão; ignora a EDP e as condições de contorno).`, type: "error" });
-      }
-      if (meta) {
-        lines.push({ text: `[SUCCESS] Backend: ${meta.approximate ? "aprox (JS)" : meta.backend} | Solver elapsed: ${meta.elapsed_ms.toFixed(2)} ms`, type: "success" });
-        lines.push({ text: `[SUCCESS] Converged: ${meta.converged ? "Yes" : "No"}`, type: "success" });
-      }
-      lines.push({ text: `[SUCCESS] Total client execution: ${lastRunMs.toFixed(1)} ms. Ready for visualization.`, type: "success" });
-    } else if (status === "error") {
-      lines.push({ text: `[ERROR] Simulation failed!`, type: "error" });
-      lines.push({ text: `[ERROR] Details: ${error}`, type: "error" });
-    }
-  }
-
-  return (
-    <div className="console-container">
-      <div className="console-stats">
-        <div className="console-stat-card">
-          <div className="console-stat-label">Status</div>
-          <div className="console-stat-value" style={{ 
-            color: status === "solved" ? "var(--success)" : status === "error" ? "oklch(0.65 0.2 20)" : "var(--text)"
-          }}>{statStatus}</div>
-        </div>
-        <div className="console-stat-card">
-          <div className="console-stat-label">Grid Size</div>
-          <div className="console-stat-value">{statGrid}</div>
-        </div>
-        <div className="console-stat-card">
-          <div className="console-stat-label">Execution Time</div>
-          <div className="console-stat-value">{statTime}</div>
-        </div>
-        <div className="console-stat-card">
-          <div className="console-stat-label">Converged</div>
-          <div className="console-stat-value">{statConverged}</div>
-        </div>
-        <div className="console-stat-card">
-          <div className="console-stat-label">Backend</div>
-          <div className="console-stat-value">{statBackend}</div>
-        </div>
-      </div>
-      <div className="console-log">
-        {lines.map((line, idx) => (
-          <div key={idx} className="console-log-line" data-type={line.type}>
-            {line.text}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engine3D = "auto" }: Props) {
   const storeTab = useStore((s) => s.ui.vizTab);
   const setUI = useStore((s) => s.setUI);
@@ -214,71 +119,10 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
   }, [runMeta]);
 
   const exportPanelImage = async (panelId: "plot1d" | "heatmap" | "plot3d") => {
-    const container = document.querySelector(`.grid-panel[data-panel="${panelId}"]`) || 
-                      document.querySelector(".viz-frame");
+    const container = document.querySelector(`.grid-panel[data-panel="${panelId}"]`)
+      ?? document.querySelector(".viz-frame");
     if (!container) return;
-    
-    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
-    const svg = container.querySelector("svg") as SVGGraphicsElement;
-
-    const downloadUri = async (uri: string, name: string) => {
-      if (bridge.isDesktop()) {
-        try {
-          const path = await bridge.saveDialog(name);
-          if (!path) return;
-          const success = await bridge.savePng(path, uri);
-          if (success) {
-            alert("Imagem do gráfico salva com sucesso!");
-          }
-        } catch (err) {
-          alert("Erro ao salvar imagem: " + err);
-        }
-        return;
-      }
-      const link = document.createElement("a");
-      link.download = name;
-      link.href = uri;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
-
-    if (canvas) {
-      try {
-        const dataUrl = canvas.toDataURL("image/png");
-        await downloadUri(dataUrl, `${panelId}_visualization.png`);
-      } catch (err) {
-        console.error("Failed to export canvas image", err);
-        alert("Erro ao exportar imagem: " + err);
-      }
-    } else if (svg) {
-      try {
-        const svgString = new XMLSerializer().serializeToString(svg);
-        const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-        const blobURL = URL.createObjectURL(svgBlob);
-        const image = new Image();
-        image.onload = async () => {
-          const canvas2 = document.createElement("canvas");
-          canvas2.width = svg.clientWidth || 800;
-          canvas2.height = svg.clientHeight || 500;
-          const context = canvas2.getContext("2d");
-          if (context) {
-            context.fillStyle = "rgba(20, 20, 20, 1)";
-            context.fillRect(0, 0, canvas2.width, canvas2.height);
-            context.drawImage(image, 0, 0);
-          }
-          const png = canvas2.toDataURL("image/png");
-          await downloadUri(png, `${panelId}_plot.png`);
-          URL.revokeObjectURL(blobURL);
-        };
-        image.src = blobURL;
-      } catch (err) {
-        console.error("Failed to export SVG image", err);
-        alert("Erro ao exportar imagem: " + err);
-      }
-    } else {
-      alert("Nenhuma imagem de visualização encontrada para exportar.");
-    }
+    await exportContainerImage(container, `${panelId}.png`);
   };
 
   // Allow controlled tab from parent (DesktopShell menu) or fall back to store

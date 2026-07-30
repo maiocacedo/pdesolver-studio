@@ -38,16 +38,17 @@ verdade para "arrumar tudo" — marcamos cada item conforme executamos.
   extraído para `state/payload.ts` (Item 1). Falta mover import/export JSON/PNG/CSV.
   `shell/desktop/DesktopShell.tsx`.
   **Sugestão:** extrair o restante para módulo `io/` (ou hooks `useProjectIO`).
-- [ ] **A2 (Média)** — Exportação de imagem duplicada.
-  `DesktopShell.exportPng` ↔ `VizPanel.exportPanelImage` (helper `downloadUri` copiado; fallback 800×500 repetido).
-  **Sugestão:** um único `exportImage(container, name)` em `viz/exportImage.ts`.
+- [x] **A2 (Média)** — ~~Exportação de imagem duplicada.~~ **FEITO (Item 4).**
+  Util única `viz/exportImage.ts` (`exportImage` + `exportContainerImage`); `DesktopShell`
+  e `VizPanel` agora a consomem. Nome de arquivo unificado (`<panel>.png`).
 - [x] **A3 (Positivo)** — Ponte tipada com fallback falso (`api/pywebview.ts` + `api/fakeBackend.ts`). Preservar.
 
 ### 02 · Manutenibilidade
 
-- [ ] **M1 (Alta)** — Componente-Deus `VizPanel` (`viz/VizPanel.tsx`, 839 linhas).
-  *Abas, `SolverConsole`, `EmptyState`, export, gravação de vídeo, loop rAF e roteamento 1D/2D/3D num só arquivo.*
-  **Sugestão:** decompor em `SolverConsole`, `useTimePlayback`, `useCanvasRecorder`, `exportImage`.
+- [~] **M1 (Alta)** — Componente-Deus `VizPanel`. _Parcial (Item 4, escopo focado):_
+  `SolverConsole` → `viz/SolverConsole.tsx`; export → `viz/exportImage.ts`.
+  **839 → 728 linhas.** Falta extrair `useTimePlayback` (loop rAF) e `useCanvasRecorder`
+  (gravação) num passo futuro.
 - [ ] **M2 (Média)** — Coreografia do tour com índices mágicos.
   `state/store.ts` (`nextTourStep`/`prevTourStep`, `nextStep === 3…7`) ↔ `TourOverlay.tsx` (`TOUR_STEPS`).
   **Sugestão:** colocar efeitos de UI junto de cada passo (campo `onEnter`).

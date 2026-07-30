@@ -17,6 +17,7 @@ import { GalleryDrawer } from "../../gallery/GalleryDrawer";
 import { HistoryDrawer } from "../../history/HistoryDrawer";
 import { TweaksPanel, type TweakValues } from "../../tweaks/TweaksPanel";
 import { bridge } from "../../api/pywebview";
+import { exportImage } from "../../viz/exportImage";
 import type { Palette } from "../../viz/colormap";
 
 const DEFAULT_TWEAKS: TweakValues = {
@@ -178,70 +179,13 @@ export function DesktopShell() {
       URL.revokeObjectURL(url);
     },
     exportPng: async () => {
-      const canvas = document.querySelector(".viz-frame canvas") as HTMLCanvasElement || 
-                     document.querySelector(".viz-stage canvas") as HTMLCanvasElement ||
-                     document.querySelector(".grid-panel canvas") as HTMLCanvasElement;
-      const svg = document.querySelector(".viz-stage svg") as SVGGraphicsElement ||
-                  document.querySelector(".grid-panel svg") as SVGGraphicsElement;
-
-      const downloadUri = async (uri: string, name: string) => {
-        if (bridge.isDesktop()) {
-          try {
-            const path = await bridge.saveDialog(name);
-            if (!path) return;
-            const success = await bridge.savePng(path, uri);
-            if (success) {
-              alert("Imagem do gráfico salva com sucesso!");
-            }
-          } catch (err) {
-            alert("Erro ao salvar imagem: " + err);
-          }
-          return;
-        }
-        const link = document.createElement("a");
-        link.download = name;
-        link.href = uri;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      };
-
-      if (canvas) {
-        try {
-          const dataUrl = canvas.toDataURL("image/png");
-          await downloadUri(dataUrl, "pde_visualization.png");
-        } catch (err) {
-          console.error("Failed to export canvas image", err);
-          alert("Erro ao exportar imagem: " + err);
-        }
-      } else if (svg) {
-        try {
-          const svgString = new XMLSerializer().serializeToString(svg);
-          const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-          const blobURL = URL.createObjectURL(svgBlob);
-          const image = new Image();
-          image.onload = async () => {
-            const canvas2 = document.createElement("canvas");
-            canvas2.width = svg.clientWidth || 800;
-            canvas2.height = svg.clientHeight || 500;
-            const context = canvas2.getContext("2d");
-            if (context) {
-              context.fillStyle = "rgba(20, 20, 20, 1)";
-              context.fillRect(0, 0, canvas2.width, canvas2.height);
-              context.drawImage(image, 0, 0);
-            }
-            const png = canvas2.toDataURL("image/png");
-            await downloadUri(png, "pde_plot.png");
-            URL.revokeObjectURL(blobURL);
-          };
-          image.src = blobURL;
-        } catch (err) {
-          console.error("Failed to export SVG image", err);
-          alert("Erro ao exportar imagem: " + err);
-        }
-      } else {
-        alert("Nenhuma visualização ativa encontrada para exportar.");
-      }
+      const canvas = document.querySelector(
+        ".viz-frame canvas, .viz-stage canvas, .grid-panel canvas",
+      ) as HTMLCanvasElement | null;
+      const svg = document.querySelector(
+        ".viz-stage svg, .grid-panel svg",
+      ) as SVGGraphicsElement | null;
+      await exportImage(canvas ?? svg, "pde_visualization.png");
     },
     exportCsv: async () => {
       const fields = useStore.getState().run.fields;
