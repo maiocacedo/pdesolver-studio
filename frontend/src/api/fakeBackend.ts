@@ -72,7 +72,9 @@ export async function solve(payload: PDESPayload): Promise<SolveResult> {
 
   return {
     fields,
-    meta: { converged: true, elapsed_ms: 350, backend: "numpy" },
+    // `approximate` marks this as the in-browser fallback: it pattern-matches a
+    // few IC shapes and ignores the actual PDE/BCs, so the UI must flag it.
+    meta: { converged: true, elapsed_ms: 350, backend: "numpy", approximate: true },
   };
 }
 

@@ -81,6 +81,7 @@ class ResultMeta(TypedDict, total=False):
     converged: bool
     elapsed_ms: int
     backend: Literal["numpy", "cupy"]
+    approximate: bool  # True only for the in-browser JS fallback solver
 
 
 class SolveResult(TypedDict):

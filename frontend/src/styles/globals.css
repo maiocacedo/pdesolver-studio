@@ -288,6 +288,24 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* Viz tabs */
 .tabs { display: flex; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
+
+/* Approximate-result warning banner (JS fallback solver) */
+.viz-approx-banner {
+  display: flex; align-items: center; gap: 10px;
+  margin: 8px 12px 0; padding: 8px 12px;
+  border-radius: var(--r-2);
+  background: oklch(0.76 0.12 75 / 0.14);
+  border: 1px solid oklch(0.76 0.12 75 / 0.42);
+  color: var(--text); font-size: 12.5px; line-height: 1.4;
+}
+.viz-approx-icon { display: inline-flex; color: oklch(0.7 0.15 70); flex-shrink: 0; }
+.viz-approx-text { flex: 1; }
+.viz-approx-close {
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; background: none; cursor: pointer; padding: 2px;
+  color: var(--text-muted); border-radius: var(--r-1); flex-shrink: 0;
+}
+.viz-approx-close:hover { color: var(--text); background: oklch(0.76 0.12 75 / 0.18); }
 .tab {
   appearance: none; border: 0; background: transparent;
   padding: 12px 14px; font-size: 13px; font-weight: 500;

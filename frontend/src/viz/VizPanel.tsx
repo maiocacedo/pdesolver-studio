@@ -80,7 +80,7 @@ interface ConsoleProps {
   status: "pristine" | "solving" | "solved" | "error";
   lastRunMs: number;
   error: string | null;
-  meta?: { converged: boolean; elapsed_ms: number; backend: string } | null;
+  meta?: { converged: boolean; elapsed_ms: number; backend: string; approximate?: boolean } | null;
   system: any;
 }
 
@@ -88,7 +88,9 @@ function SolverConsole({ status, lastRunMs, error, meta, system }: ConsoleProps)
   const is2D = !!system.domain.ymin && system.mesh.ny !== undefined;
   
   const statStatus = status.toUpperCase();
-  const statBackend = meta?.backend ? meta.backend.toUpperCase() : "N/A";
+  const statBackend = meta?.approximate
+    ? "APROX (JS)"
+    : meta?.backend ? meta.backend.toUpperCase() : "N/A";
   const statTime = status === "solved" ? `${lastRunMs.toFixed(1)} ms` : "N/A";
   const statConverged = meta?.converged !== undefined ? (meta.converged ? "YES" : "NO") : "N/A";
   const statGrid = is2D 
@@ -119,8 +121,11 @@ function SolverConsole({ status, lastRunMs, error, meta, system }: ConsoleProps)
       lines.push({ text: `[INFO] Solving system equations...`, type: "info" });
     } else if (status === "solved") {
       lines.push({ text: `[SUCCESS] Simulation finished successfully.`, type: "success" });
+      if (meta?.approximate) {
+        lines.push({ text: `[WARN] Backend real ausente — solver JS aproximado (apenas difusão; ignora a EDP e as condições de contorno).`, type: "error" });
+      }
       if (meta) {
-        lines.push({ text: `[SUCCESS] Backend: ${meta.backend} | Solver elapsed: ${meta.elapsed_ms.toFixed(2)} ms`, type: "success" });
+        lines.push({ text: `[SUCCESS] Backend: ${meta.approximate ? "aprox (JS)" : meta.backend} | Solver elapsed: ${meta.elapsed_ms.toFixed(2)} ms`, type: "success" });
         lines.push({ text: `[SUCCESS] Converged: ${meta.converged ? "Yes" : "No"}`, type: "success" });
       }
       lines.push({ text: `[SUCCESS] Total client execution: ${lastRunMs.toFixed(1)} ms. Ready for visualization.`, type: "success" });
@@ -184,6 +189,13 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
   const lastRunMs = useStore((s) => s.run.lastRunMs);
   const visibleFieldIndices = useStore((s) => s.run.visibleFieldIndices);
   const toggleVisibleField = useStore((s) => s.toggleVisibleField);
+
+  // Approximate-result banner: shown when the in-browser JS fallback produced the
+  // current result (no real backend). Reappears on every new approximate solve.
+  const [approxDismissed, setApproxDismissed] = useState(false);
+  useEffect(() => {
+    if (runMeta?.approximate) setApproxDismissed(false);
+  }, [runMeta]);
 
   const exportPanelImage = async (panelId: "plot1d" | "heatmap" | "plot3d") => {
     const container = document.querySelector(`.grid-panel[data-panel="${panelId}"]`) || 
@@ -596,6 +608,23 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
 
   return (
     <>
+      {runMeta?.approximate && !approxDismissed && (
+        <div className="viz-approx-banner" role="status">
+          <span className="viz-approx-icon"><Icon.Alert /></span>
+          <span className="viz-approx-text">
+            Sem backend real conectado — <b>resultado aproximado</b>. O solver JS reconhece
+            apenas alguns perfis de difusão e ignora a EDP e as condições de contorno.
+          </span>
+          <button
+            className="viz-approx-close"
+            onClick={() => setApproxDismissed(true)}
+            aria-label="Dispensar aviso"
+            title="Dispensar"
+          >
+            <Icon.Close />
+          </button>
+        </div>
+      )}
       <div className="tabs">
         {layoutMode === "tabs" ? (
           TABS.filter((tb) => !(isCurrent2D && tb.id === "plot1d")).map((tb) => (

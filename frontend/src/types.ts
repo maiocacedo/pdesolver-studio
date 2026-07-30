@@ -69,6 +69,8 @@ export interface SolveResult {
     converged: boolean;
     elapsed_ms: number;
     backend: "numpy" | "cupy";
+    /** True when produced by the in-browser JS fallback solver (no real backend). */
+    approximate?: boolean;
   };
 }
 

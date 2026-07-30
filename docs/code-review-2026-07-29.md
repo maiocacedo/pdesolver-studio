@@ -56,9 +56,10 @@ verdade para "arrumar tudo" — marcamos cada item conforme executamos.
 
 ### 03 · Correção & comportamento
 
-- [ ] **C1 (Alta)** — Solver falso engana no modo web/dev (`api/fakeBackend.ts`).
-  *Reconhece só 3 ICs por string-match e devolve difusão fixa, ignorando a EDP/BCs reais.*
-  **Sugestão:** aviso "resultado aproximado (sem backend)" quando este caminho for usado.
+- [x] **C1 (Alta)** — ~~Solver falso engana no modo web/dev.~~ **FEITO (Item 2).**
+  `fakeBackend` marca `meta.approximate`; banner dismissível no topo da visualização
+  (reaparece a cada solve aproximado), rótulo do console → "APROX (JS)" + linha `[WARN]`.
+  Flag adicionada a `types.ts` e `schema.py` em sincronia.
 - [ ] **C2 (Média)** — Tour força-inicia e descarta estado.
   `DesktopShell.tsx` `useEffect(startTour)` + `store.startTour` (substitui por `wave1DPreset()`).
   **Sugestão:** gate por `localStorage`; só resetar preset após confirmação.
