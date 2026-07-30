@@ -656,46 +656,24 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                 <Icon.Reset />
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: 6 }}>
-                <span style={{ fontSize: 10, color: "var(--text-faint)" }}>De:</span>
+                <span className="rec-step-label">De:</span>
                 <input
                   type="number"
                   min="1"
                   max={field.ts.length}
                   value={recStartStep}
                   onChange={(e) => setRecStartStep(Math.max(1, Math.min(field.ts.length, Number(e.target.value) || 1)))}
-                  style={{
-                    width: 44,
-                    height: 22,
-                    background: "var(--surface-sunk)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 4,
-                    color: "var(--text)",
-                    fontSize: 10,
-                    textAlign: "center",
-                    padding: "2px 4px",
-                    fontFamily: "var(--font-mono)",
-                  }}
+                  className="rec-step-input"
                   disabled={recording}
                 />
-                <span style={{ fontSize: 10, color: "var(--text-faint)" }}>Até:</span>
+                <span className="rec-step-label">Até:</span>
                 <input
                   type="number"
                   min="1"
                   max={field.ts.length}
                   value={recEndStep ?? field.ts.length}
                   onChange={(e) => setRecEndStep(Math.max(1, Math.min(field.ts.length, Number(e.target.value) || field.ts.length)))}
-                  style={{
-                    width: 44,
-                    height: 22,
-                    background: "var(--surface-sunk)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 4,
-                    color: "var(--text)",
-                    fontSize: 10,
-                    textAlign: "center",
-                    padding: "2px 4px",
-                    fontFamily: "var(--font-mono)",
-                  }}
+                  className="rec-step-input"
                   disabled={recording}
                 />
               </div>
