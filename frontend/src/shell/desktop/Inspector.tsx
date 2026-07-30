@@ -26,7 +26,17 @@ export function Inspector({ open, onClose }: Props) {
   const dy = is2D && mesh.ny ? (ymax - ymin) / Math.max(1, mesh.ny - 1) : null;
   const dt = (tf - t0) / Math.max(1, mesh.nt - 1);
   const cfl = dt / (dx * dx);
+  // CFL ≤ 0.5 is a stability limit only for explicit integrators. BDF-2 and
+  // Crank–Nicolson are implicit / A-stable, so CFL is informational for them.
+  const isExplicit = scheme.time === "RKF";
   const cflOk = cfl <= 0.5;
+  const cflColor = !isExplicit ? "var(--text-muted)" : cflOk ? "var(--success)" : "var(--warning)";
+  const cflMark = !isExplicit ? "" : cflOk ? " ✓" : " ⚠";
+  const cflTitle = !isExplicit
+    ? "Informativo: o integrador implícito atual (A-estável) não é limitado pela condição CFL explícita."
+    : cflOk
+      ? "Estabilidade explícita garantida (CFL ≤ 0.5)"
+      : "Instabilidade numérica possível para esquemas explícitos (CFL > 0.5)";
 
   return (
     <aside className="inspector" data-open={open ? "1" : "0"} aria-hidden={!open}>
@@ -76,8 +86,8 @@ export function Inspector({ open, onClose }: Props) {
             )}
             <span className="k" title="Tamanho do passo no tempo (dt)">Δt</span><span className="v">{dt.toExponential(3)}</span>
             <span className="k" title="Parâmetro Courant-Friedrichs-Lewy (estabilidade explícita CFL = dt/dx² <= 0.5)">CFL</span>
-            <span className="v" style={{ color: cflOk ? "var(--success)" : "var(--warning)" }} title={cflOk ? "Estabilidade explícita garantida (CFL <= 0.5)" : "Instabilidade numérica possível para esquemas explícitos (CFL > 0.5)"}>
-              {cfl.toFixed(3)} {cflOk ? "✓" : "⚠"}
+            <span className="v" style={{ color: cflColor }} title={cflTitle}>
+              {cfl.toFixed(3)}{cflMark}{!isExplicit ? " (info)" : ""}
             </span>
           </div>
         </div>

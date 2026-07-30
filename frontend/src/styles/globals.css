@@ -1131,5 +1131,16 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   .loading-track-shimmer { animation: none; opacity: 0; }
 }
 
+/* Global reduced-motion guard: honour the OS setting across the whole UI
+   (card drawers, inspector slide, tour, spotlight, etc.). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 
 

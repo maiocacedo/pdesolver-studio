@@ -16,6 +16,30 @@ if TYPE_CHECKING:
     import webview
 
 
+def _validate_payload_shape(payload: object) -> None:
+    """Minimal structural check for an imported PDES payload (see schema.PDESPayload).
+
+    Raises ValueError with a user-facing message when the shape is wrong, so a
+    malformed file fails loudly at import instead of deep inside the solver.
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("Payload inválido: esperado um objeto JSON.")
+    pdes = payload.get("pdes")
+    if not isinstance(pdes, list) or not pdes:
+        raise ValueError("Payload inválido: 'pdes' deve ser uma lista não vazia.")
+    if not isinstance(payload.get("disc_n"), list) or not payload["disc_n"]:
+        raise ValueError("Payload inválido: 'disc_n' deve ser uma lista não vazia.")
+    for key in ("discretize", "solve"):
+        if not isinstance(payload.get(key), dict):
+            raise ValueError(f"Payload inválido: faltando o objeto '{key}'.")
+    for i, pde in enumerate(pdes):
+        if not isinstance(pde, dict):
+            raise ValueError(f"Payload inválido: pde[{i}] deve ser um objeto.")
+        for field in ("eq", "func", "expr_ic"):
+            if field not in pde:
+                raise ValueError(f"Payload inválido: pde[{i}] sem o campo '{field}'.")
+
+
 class Api:
     """Methods exposed as ``window.pywebview.api.*`` in the renderer."""
 
@@ -43,6 +67,9 @@ class Api:
 
     def load_json(self, path: str) -> dict:
         data = json.loads(Path(path).read_text())
+        if not isinstance(data, dict) or "payload" not in data:
+            raise ValueError("Arquivo inválido: faltando o campo 'payload'.")
+        _validate_payload_shape(data["payload"])
         return {"payload": data["payload"], "result": data.get("result")}
 
     # ── dialogs (use the OS file picker) ─────────────────────────────

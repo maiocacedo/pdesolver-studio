@@ -74,6 +74,22 @@ function EmptyState({ solving }: { solving: boolean }) {
   );
 }
 
+/** Index of the value in `ts` (sorted ascending) closest to `target`, via binary search. */
+function nearestTimeIndex(ts: number[], target: number): number {
+  if (ts.length === 0) return 0;
+  if (target <= ts[0]) return 0;
+  if (target >= ts[ts.length - 1]) return ts.length - 1;
+  let lo = 0;
+  let hi = ts.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (ts[mid] < target) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  // `lo` is the first index with ts[lo] >= target; pick the nearer neighbour.
+  return Math.abs(ts[lo] - target) < Math.abs(target - ts[lo - 1]) ? lo : lo - 1;
+}
+
 function Loading3D() {
   return (
     <div style={{ textAlign: "center", color: "var(--text-muted)" }}>
@@ -289,17 +305,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
         }
         timeRef.current = targetPhysicalTime;
 
-        const ts = field.ts;
-        let closestIdx = 0;
-        let minDiff = Infinity;
-        for (let i = 0; i < ts.length; i++) {
-          const diff = Math.abs(ts[i] - targetPhysicalTime);
-          if (diff < minDiff) {
-            minDiff = diff;
-            closestIdx = i;
-          }
-        }
-        setTIndex(closestIdx);
+        setTIndex(nearestTimeIndex(field.ts, targetPhysicalTime));
       }
       previousTimeRef.current = realTimeMs;
       requestRef.current = requestAnimationFrame(animate);
@@ -622,17 +628,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                      const t0 = field.ts[0];
                      const tf = field.ts[field.ts.length - 1];
                      const targetTime = t0 + f * (tf - t0);
-                     
-                     let closestIdx = 0;
-                     let minDiff = Infinity;
-                     for (let i = 0; i < field.ts.length; i++) {
-                       const diff = Math.abs(field.ts[i] - targetTime);
-                       if (diff < minDiff) {
-                         minDiff = diff;
-                         closestIdx = i;
-                       }
-                     }
-                     setTIndex(closestIdx);
+                     setTIndex(nearestTimeIndex(field.ts, targetTime));
                    }}>
                 {(() => {
                   const t0 = field.ts[0];

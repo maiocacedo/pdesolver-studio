@@ -412,5 +412,7 @@ def download_xlsx(req: SimRequest):
     return {'ok': True, 'xlsx': b64, 'filename': 'pdesolver_dados.xlsx'}
 
 if __name__ == '__main__':
+    import os
     import uvicorn
-    uvicorn.run('backend:app', host='localhost', port=8000, reload=True)
+    # Auto-reload is a development convenience; enable it only with DEV=1.
+    uvicorn.run('backend:app', host='localhost', port=8000, reload=os.getenv('DEV') == '1')

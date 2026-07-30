@@ -70,8 +70,8 @@ verdade para "arrumar tudo" — marcamos cada item conforme executamos.
   auto-reset por `resetKeys`) envolvendo o `VizPanel` no `DesktopShell`
   (`resetKeys=[vizTab, layoutMode, runStatus]`). 3 testes jsdom cobrindo
   fallback/recuperação. Sidebar/inspetor/menus seguem vivos num crash de gráfico.
-- [ ] **C3 (Baixa)** — CFL exibido para esquemas implícitos (`Inspector.tsx`, `cfl ≤ 0.5`).
-  **Sugestão:** contextualizar o indicador conforme o integrador (informativo p/ BDF-2/CN).
+- [x] **C3 (Baixa)** — ~~CFL exibido para esquemas implícitos.~~ **FEITO.**
+  Implícitos (BDF-2/CN) → "(info)" neutro; explícito (RKF) → ✓/⚠. Tooltip por esquema.
 
 ### 04 · Performance
 
@@ -79,8 +79,8 @@ verdade para "arrumar tudo" — marcamos cada item conforme executamos.
   Superfícies 3D via `React.lazy` (Three.js só baixa ao abrir 3D) + KaTeX isolado
   via `manualChunks`. **Boot: 1045 KB → ~497 KB** (main 243 + katex 254); Three.js
   (526 KB) agora lazy. Fallback `Preparando engine 3D…` via Suspense.
-- [ ] **P2 (Baixa)** — Busca linear O(n) no loop de reprodução (`viz/VizPanel.tsx`, `animate()`).
-  **Sugestão:** busca binária sobre `field.ts`.
+- [x] **P2 (Baixa)** — ~~Busca linear O(n) no loop de reprodução.~~ **FEITO.**
+  Helper `nearestTimeIndex` (busca binária) usado no `animate()` e no clique da trilha.
 
 ### 05 · Acessibilidade & UX
 
@@ -88,8 +88,8 @@ verdade para "arrumar tudo" — marcamos cada item conforme executamos.
   **Sugestão:** sistema de toasts/notificações inline coerente com o tema.
 - [ ] **U2 (Média)** — Mistura de idiomas PT/EN na mesma tela.
   **Sugestão:** padronizar um idioma ou camada i18n leve com dicionário único.
-- [ ] **U3 (Baixa)** — Movimento sem guarda global (`globals.css`).
-  **Sugestão:** bloco global sob `prefers-reduced-motion: reduce`.
+- [x] **U3 (Baixa)** — ~~Movimento sem guarda global.~~ **FEITO.**
+  Bloco global `@media (prefers-reduced-motion: reduce)` zera transições/animações.
 - [x] **U4 (Positivo)** — Atalhos e affordances sólidos (F5, Ctrl+1/2/3, aria-labels). Preservar.
 
 ### 06 · Segurança & robustez
@@ -97,10 +97,11 @@ verdade para "arrumar tudo" — marcamos cada item conforme executamos.
 - [ ] **S1 (Média)** — Fronteira de confiança das expressões.
   `backend/solvers/heat.py` → lib `pdesolver`; rota `backend.py /solve_json` (localhost:8000) aceita payload arbitrário.
   **Sugestão:** verificar como `pdesolver` avalia expressões; manter servidor em localhost e nunca expor.
-- [ ] **S2 (Baixa)** — `reload=True` no entrypoint (`backend.py`, `uvicorn.run`).
-  **Sugestão:** condicionar a `DEV=1`.
-- [ ] **S3 (Baixa)** — Import sem validação de esquema (`backend/api.py`, `load_json`).
-  **Sugestão:** validar contra `schema.py` antes de devolver ao frontend.
+- [x] **S2 (Baixa)** — ~~`reload=True` no entrypoint.~~ **FEITO.**
+  `reload=os.getenv('DEV') == '1'` no `backend.py`.
+- [x] **S3 (Baixa)** — ~~Import sem validação de esquema.~~ **FEITO.**
+  `_validate_payload_shape` checa estrutura no `load_json` (falha com mensagem clara);
+  9 testes pytest cobrindo os casos malformados.
 
 ### 07 · Testes & CI
 

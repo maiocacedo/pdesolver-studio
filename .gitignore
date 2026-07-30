@@ -10,3 +10,4 @@ frontend/tsconfig.tsbuildinfo
 .env.local
 .artifacts/
 .superpowers
+docs
