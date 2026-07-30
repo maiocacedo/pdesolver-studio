@@ -8,6 +8,7 @@ import { Heatmap } from "./Heatmap";
 import { Heatmap2D } from "./Heatmap2D";
 import { SolverConsole } from "./SolverConsole";
 import { exportContainerImage } from "./exportImage";
+import { toast } from "../components/toast/toastStore";
 import type { Palette } from "./colormap";
 
 // 3D surfaces (and their Three.js dependency) are code-split: the chunk loads
@@ -206,7 +207,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
     }
 
     if (!canvas) {
-      alert("No canvas found to record! Video recording is optimized for canvas-based views (Heatmaps, 2D simulation, and 3D surface). Please switch tab/view to record.");
+      toast.error("Nenhum canvas para gravar. A gravação funciona nas views de canvas (Heatmap, 2D e Superfície 3D) — troque de aba/view para gravar.");
       return;
     }
 
@@ -215,7 +216,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
     try {
       const stream = (canvas as any).captureStream ? (canvas as any).captureStream(30) : null;
       if (!stream) {
-        alert("Canvas recording is not supported in this browser.");
+        toast.error("Gravação de canvas não suportada neste navegador.");
         return;
       }
 
@@ -260,7 +261,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
       recorder.stop();
     } catch (err) {
       console.error("Recording failed", err);
-      alert("Recording failed: " + err);
+      toast.error("Falha na gravação: " + err);
     } finally {
       setRecording(false);
     }

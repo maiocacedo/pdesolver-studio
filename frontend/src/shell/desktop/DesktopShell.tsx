@@ -12,6 +12,8 @@ import { DictionaryModal } from "./DictionaryModal";
 import { ResizableSidebar } from "./ResizableSidebar";
 import { TourOverlay } from "./TourOverlay";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
+import { ToastHost } from "../../components/toast/ToastHost";
+import { toast } from "../../components/toast/toastStore";
 import { Sidebar } from "../../panels/Sidebar";
 import { VizPanel } from "../../viz/VizPanel";
 import { GalleryDrawer } from "../../gallery/GalleryDrawer";
@@ -135,12 +137,12 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
                 }
               }));
             }
-            alert("Configuração importada com sucesso!");
+            toast.success("Configuração importada com sucesso!");
           } else {
-            alert("Formato de arquivo inválido.");
+            toast.error("Formato de arquivo inválido.");
           }
         } catch (err) {
-          alert("Erro ao importar arquivo: " + err);
+          toast.error("Erro ao importar arquivo: " + err);
         }
         return;
       }
@@ -159,10 +161,10 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
             if (config && Array.isArray(config.pdes)) {
               loadPreset(config);
             } else {
-              alert("Invalid configuration file format.");
+              toast.error("Formato de arquivo de configuração inválido.");
             }
           } catch (err) {
-            alert("Error reading file: " + err);
+            toast.error("Erro ao ler arquivo: " + err);
           }
         };
         reader.readAsText(file);
@@ -182,10 +184,10 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
           if (!path) return;
           const success = await bridge.saveJson(path, payload, result as any);
           if (success) {
-            alert("Configuração salva com sucesso!");
+            toast.success("Configuração salva com sucesso!");
           }
         } catch (err) {
-          alert("Erro ao salvar configuração: " + err);
+          toast.error("Erro ao salvar configuração: " + err);
         }
         return;
       }
@@ -213,7 +215,7 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
     exportCsv: async () => {
       const fields = useStore.getState().run.fields;
       if (!fields || fields.length === 0) {
-        alert("Nenhum resultado de simulação disponível para exportar. Por favor, execute a simulação antes.");
+        toast.error("Nenhum resultado de simulação disponível. Execute a simulação antes de exportar.");
         return;
       }
       const firstField = fields[0];
@@ -258,10 +260,10 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
           if (!path) return;
           const success = await bridge.saveCsv(path, csvContent);
           if (success) {
-            alert("Dados CSV exportados com sucesso!");
+            toast.success("Dados CSV exportados com sucesso!");
           }
         } catch (err) {
-          alert("Erro ao exportar CSV: " + err);
+          toast.error("Erro ao exportar CSV: " + err);
         }
         return;
       }
@@ -353,6 +355,7 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
       {aboutOpen && <AboutModal onClose={() => setAboutOpen(false)} />}
       {dictionaryOpen && <DictionaryModal onClose={() => setDictionaryOpen(false)} />}
       <TourOverlay />
+      <ToastHost />
 
       <TweaksPanel
         open={tweaksOpen}

@@ -7,6 +7,7 @@
  * otherwise via a browser anchor.
  */
 import { bridge } from "../api/pywebview";
+import { toast } from "../components/toast/toastStore";
 
 async function downloadUri(uri: string, name: string): Promise<void> {
   if (bridge.isDesktop()) {
@@ -14,9 +15,9 @@ async function downloadUri(uri: string, name: string): Promise<void> {
       const path = await bridge.saveDialog(name);
       if (!path) return;
       const ok = await bridge.savePng(path, uri);
-      if (ok) alert("Imagem do gráfico salva com sucesso!");
+      if (ok) toast.success("Imagem do gráfico salva com sucesso!");
     } catch (err) {
-      alert("Erro ao salvar imagem: " + err);
+      toast.error("Erro ao salvar imagem: " + err);
     }
     return;
   }
@@ -38,7 +39,7 @@ export async function exportImage(
       await downloadUri(source.toDataURL("image/png"), filename);
     } catch (err) {
       console.error("Failed to export canvas image", err);
-      alert("Erro ao exportar imagem: " + err);
+      toast.error("Erro ao exportar imagem: " + err);
     }
     return;
   }
@@ -65,12 +66,12 @@ export async function exportImage(
       image.src = blobURL;
     } catch (err) {
       console.error("Failed to export SVG image", err);
-      alert("Erro ao exportar imagem: " + err);
+      toast.error("Erro ao exportar imagem: " + err);
     }
     return;
   }
 
-  alert("Nenhuma visualização ativa encontrada para exportar.");
+  toast.error("Nenhuma visualização ativa encontrada para exportar.");
 }
 
 /** Find a canvas or SVG inside `container` and export it to PNG. */
