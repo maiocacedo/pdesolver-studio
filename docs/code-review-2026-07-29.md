@@ -70,9 +70,10 @@ verdade para "arrumar tudo" — marcamos cada item conforme executamos.
 
 ### 04 · Performance
 
-- [ ] **P1 (Média)** — Bundle único de 1.05 MB (`dist/assets/index-*.js`).
-  *Three.js e KaTeX no chunk inicial.*
-  **Sugestão:** `React.lazy` nas superfícies 3D e KaTeX + `manualChunks`.
+- [x] **P1 (Média)** — ~~Bundle único de 1.05 MB.~~ **FEITO (Item 3).**
+  Superfícies 3D via `React.lazy` (Three.js só baixa ao abrir 3D) + KaTeX isolado
+  via `manualChunks`. **Boot: 1045 KB → ~497 KB** (main 243 + katex 254); Three.js
+  (526 KB) agora lazy. Fallback `Preparando engine 3D…` via Suspense.
 - [ ] **P2 (Baixa)** — Busca linear O(n) no loop de reprodução (`viz/VizPanel.tsx`, `animate()`).
   **Sugestão:** busca binária sobre `field.ts`.
 

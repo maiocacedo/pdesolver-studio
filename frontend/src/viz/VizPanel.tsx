@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useStore } from "../state/store";
 import type { FieldOut } from "../types";
@@ -7,9 +7,12 @@ import { bridge } from "../api/pywebview";
 import { Plot1D } from "./Plot1D";
 import { Heatmap } from "./Heatmap";
 import { Heatmap2D } from "./Heatmap2D";
-import { Surface3D } from "./Surface3D";
-import { Surface3DWebGL } from "./Surface3DWebGL";
 import type { Palette } from "./colormap";
+
+// 3D surfaces (and their Three.js dependency) are code-split: the chunk loads
+// only when a 3D view is first opened, keeping it out of the initial bundle.
+const Surface3D = lazy(() => import("./Surface3D").then((m) => ({ default: m.Surface3D })));
+const Surface3DWebGL = lazy(() => import("./Surface3DWebGL").then((m) => ({ default: m.Surface3DWebGL })));
 
 type VizTab = "plot1d" | "heatmap" | "plot3d";
 
@@ -66,6 +69,19 @@ function EmptyState({ solving }: { solving: boolean }) {
         Press <span className="kbd">F5</span> or click{" "}
         <span className="kbd">▶ Run</span> to discretize and integrate.
       </div>
+    </div>
+  );
+}
+
+function Loading3D() {
+  return (
+    <div style={{ textAlign: "center", color: "var(--text-muted)" }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: "50%", margin: "0 auto 12px",
+        border: "2.5px solid var(--accent-faint)", borderTopColor: "var(--accent)",
+        animation: "spin 0.7s linear infinite",
+      }} />
+      <div style={{ fontSize: 12.5 }}>Preparando engine 3D…</div>
     </div>
   );
 }
@@ -298,10 +314,10 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
   const useWebGL = engine3D === "webgl" || (engine3D === "auto" && isWebGLSupported);
 
   const render3DPlot = () => {
-    if (useWebGL) {
-      return <Surface3DWebGL field={field!} palette={palette} tIndex={tIndex} />;
-    }
-    return <Surface3D field={field!} palette={palette} tIndex={tIndex} />;
+    const surface = useWebGL
+      ? <Surface3DWebGL field={field!} palette={palette} tIndex={tIndex} />
+      : <Surface3D field={field!} palette={palette} tIndex={tIndex} />;
+    return <Suspense fallback={<Loading3D />}>{surface}</Suspense>;
   };
 
   const [recording, setRecording] = useState(false);
