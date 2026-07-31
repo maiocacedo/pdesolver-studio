@@ -5,11 +5,13 @@ import { Latex, pdeToLatex } from "../equation/Latex";
 import { Field, NumberPair } from "../components/Field";
 import { ConfigCard } from "../components/Card";
 import { FEATURES } from "../features";
+import { useT } from "../i18n/i18n";
 import type { BCType } from "../types";
 
 type BCSide = "west" | "east" | "north" | "south";
 
 export function Sidebar() {
+  const { t } = useT();
   const system = useStore((s) => s.system);
   const uiMode = useStore((s) => s.ui.mode);
   const setPdeField = useStore((s) => s.setPdeField);
@@ -88,9 +90,9 @@ export function Sidebar() {
       )}
 
       {/* ── CARD 1: EQUATIONS ────────────────────────────────────────── */}
-      <ConfigCard step="1" title="Equations" complete={!!activePde.ic}>
+      <ConfigCard step="1" title={t("sidebar.card.equations")} complete={!!activePde.ic}>
         {FEATURES.PDE_SYSTEMS && (
-          <Field label="System Functions">
+          <Field label={t("sidebar.systemFunctions")}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
               <div className="seg" style={{ flex: 1, overflowX: "auto" }}>
                 {system.pdes.map((p) => (
@@ -161,7 +163,7 @@ export function Sidebar() {
           setConfig={(c) => patchPde(c)}
         />
 
-        <Field label="Initial condition" hint={`${activePde.func}(x, 0) — symbolic expression.`}>
+        <Field label={t("sidebar.initialCondition")} hint={`${activePde.func}(x, 0) — symbolic expression.`}>
           <div className="input-group">
             <span className="addon" style={{ borderLeft: 0, borderRight: "1px solid var(--border)" }}>
               {activePde.func}({is2D ? "x,y" : "x"},0) =
@@ -187,14 +189,14 @@ export function Sidebar() {
           </div>
         </Field>
 
-        <Field label="Boundary conditions" hint={`Configure as bordas para ${activePde.func}`}>
+        <Field label={t("sidebar.boundaryConditions")} hint={`Configure as bordas para ${activePde.func}`}>
           <div className="seg" style={{ width: "100%", marginBottom: 10 }}>
-            <button data-active={currentBcSide === "west" ? "1" : "0"} onClick={() => setActiveBcSide("west")}>Oeste (O)</button>
-            <button data-active={currentBcSide === "east" ? "1" : "0"} onClick={() => setActiveBcSide("east")}>Leste (L)</button>
+            <button data-active={currentBcSide === "west" ? "1" : "0"} onClick={() => setActiveBcSide("west")}>{t("sidebar.bc.west")}</button>
+            <button data-active={currentBcSide === "east" ? "1" : "0"} onClick={() => setActiveBcSide("east")}>{t("sidebar.bc.east")}</button>
             {is2D && (
               <>
-                <button data-active={currentBcSide === "north" ? "1" : "0"} onClick={() => setActiveBcSide("north")}>Norte (N)</button>
-                <button data-active={currentBcSide === "south" ? "1" : "0"} onClick={() => setActiveBcSide("south")}>Sul (S)</button>
+                <button data-active={currentBcSide === "north" ? "1" : "0"} onClick={() => setActiveBcSide("north")}>{t("sidebar.bc.north")}</button>
+                <button data-active={currentBcSide === "south" ? "1" : "0"} onClick={() => setActiveBcSide("south")}>{t("sidebar.bc.south")}</button>
               </>
             )}
           </div>
@@ -226,8 +228,8 @@ export function Sidebar() {
       </ConfigCard>
 
       {/* ── CARD 2: NUMERIC (MESH & SOLVER) ──────────────────────────── */}
-      <ConfigCard step="2" title="Numeric" complete>
-        <Field label="Spatial domain (x)">
+      <ConfigCard step="2" title={t("sidebar.card.numeric")} complete>
+        <Field label={t("sidebar.spatialDomainX")}>
           <NumberPair
             a={domain.xmin} b={domain.xmax}
             onA={(v) => setDomain({ xmin: v })} onB={(v) => setDomain({ xmax: v })}
@@ -236,7 +238,7 @@ export function Sidebar() {
         </Field>
 
         {FEATURES.TWO_D && (
-          <Field label="Spatial domain (y)" hint="Deixe em branco para 1D">
+          <Field label={t("sidebar.spatialDomainY")} hint="Deixe em branco para 1D">
             <NumberPair
               a={domain.ymin ?? ""} b={domain.ymax ?? ""}
               onA={(v) => setDomain({ ymin: v || undefined })} onB={(v) => setDomain({ ymax: v || undefined })}
@@ -245,7 +247,7 @@ export function Sidebar() {
           </Field>
         )}
 
-        <Field label="Time interval">
+        <Field label={t("sidebar.timeInterval")}>
           <NumberPair
             a={domain.t0} b={domain.tf}
             onA={(v) => setDomain({ t0: v })} onB={(v) => setDomain({ tf: v })}
@@ -253,7 +255,7 @@ export function Sidebar() {
           />
         </Field>
 
-        <Field label="Spatial points (nₓ)" hint={`Δx ≈ ${isNaN(dx) ? "0" : dx.toFixed(4)}`}>
+        <Field label={t("sidebar.spatialPointsX")} hint={`Δx ≈ ${isNaN(dx) ? "0" : dx.toFixed(4)}`}>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <input type="range" min="10" max="400" step="1" value={mesh.nx}
                    onChange={(e) => setMesh({ nx: Number(e.target.value) })}
@@ -265,7 +267,7 @@ export function Sidebar() {
         </Field>
 
         {FEATURES.TWO_D && is2D && (
-          <Field label="Spatial points (nᵧ)" hint={dy ? `Δy ≈ ${dy.toFixed(4)}` : "2D"}>
+          <Field label={t("sidebar.spatialPointsY")} hint={dy ? `Δy ≈ ${dy.toFixed(4)}` : "2D"}>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <input type="range" min="5" max="400" step="1" value={mesh.ny ?? 21}
                      onChange={(e) => setMesh({ ny: Number(e.target.value) })}
@@ -277,7 +279,7 @@ export function Sidebar() {
           </Field>
         )}
 
-        <Field label="Spatial discretization">
+        <Field label={t("sidebar.spatialDiscretization")}>
           <div className="seg" style={{ width: "100%" }}>
             {(["backward", "central", "forward"] as const).map((m) => (
               <button key={m} data-active={scheme.disc === m ? "1" : "0"}
@@ -286,7 +288,7 @@ export function Sidebar() {
           </div>
         </Field>
 
-        <Field label="Time integration">
+        <Field label={t("sidebar.timeIntegration")}>
           <div className="seg" style={{ width: "100%" }}>
             {([
               { v: "bdf2" as const, l: "BDF-2" },
@@ -304,7 +306,7 @@ export function Sidebar() {
           </span>
         </Field>
 
-        <Field label="Time steps (nₜ)">
+        <Field label={t("sidebar.timeSteps")}>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <input type="range" min="10" max="4000" step="10" value={mesh.nt}
                    onChange={(e) => setMesh({ nt: Number(e.target.value) })}
@@ -322,7 +324,7 @@ export function Sidebar() {
             disabled={status === "solving"}
             style={{ width: "100%", justifyContent: "center", gap: 6 }}
           >
-            <span>⛭</span> {status === "solving" ? "Processando..." : "Apenas Discretizar"}
+            <span>⛭</span> {status === "solving" ? t("sidebar.processing") : t("sidebar.discretizeOnly")}
           </button>
         </div>
       </ConfigCard>

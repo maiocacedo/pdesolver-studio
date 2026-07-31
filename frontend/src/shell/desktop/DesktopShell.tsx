@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { useStore, toPayload, type SystemConfig, type PDEConfig } from "../../state/store";
+import { useStore, toPayload, TOUR_SEEN_KEY } from "../../state/store";
+import { payloadToSystemConfig } from "../../state/payload";
 import { heatPreset } from "../../gallery/examples";
 import { Drawer } from "../../components/Drawer";
 import { MenuBar, type MenuActions } from "./MenuBar";
@@ -10,59 +11,18 @@ import { AboutModal } from "./AboutModal";
 import { DictionaryModal } from "./DictionaryModal";
 import { ResizableSidebar } from "./ResizableSidebar";
 import { TourOverlay } from "./TourOverlay";
+import { ErrorBoundary } from "../../components/ErrorBoundary";
+import { ToastHost } from "../../components/toast/ToastHost";
+import { toast } from "../../components/toast/toastStore";
 import { Sidebar } from "../../panels/Sidebar";
 import { VizPanel } from "../../viz/VizPanel";
 import { GalleryDrawer } from "../../gallery/GalleryDrawer";
 import { HistoryDrawer } from "../../history/HistoryDrawer";
 import { TweaksPanel, type TweakValues } from "../../tweaks/TweaksPanel";
 import { bridge } from "../../api/pywebview";
+import { exportImage } from "../../viz/exportImage";
 import type { Palette } from "../../viz/colormap";
-
-const payloadToSystemConfig = (payload: any): SystemConfig => {
-  const is2D = payload.disc_n.length > 1;
-  const pdes: PDEConfig[] = payload.pdes.map((p: any) => ({
-    id: p.id || `pde-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-    name: p.name || p.func,
-    func: p.func,
-    eq: p.eq,
-    ic: p.expr_ic,
-    west: { type: p.west_bd, expr: p.west_func_bd },
-    east: { type: p.east_bd, expr: p.east_func_bd },
-    ...(is2D && {
-      north: { type: p.north_bd || "Dirichlet", expr: p.north_func_bd || "0" },
-      south: { type: p.south_bd || "Dirichlet", expr: p.south_func_bd || "0" },
-    })
-  }));
-  
-  const xBoundary = payload.pdes[0]?.ivar_boundary?.[0] ?? [0, 1];
-  const yBoundary = is2D ? (payload.pdes[0]?.ivar_boundary?.[1] ?? [0, 1]) : undefined;
-  
-  return {
-    pdes,
-    activePdeId: pdes[0].id,
-    domain: {
-      xmin: String(xBoundary[0]),
-      xmax: String(xBoundary[1]),
-      t0: "0",
-      tf: String(payload.solve.tf),
-      ...(is2D && {
-        ymin: String(yBoundary[0]),
-        ymax: String(yBoundary[1]),
-      })
-    },
-    mesh: {
-      nx: payload.disc_n[0],
-      nt: payload.solve.nt,
-      ...(is2D && {
-        ny: payload.disc_n[1],
-      })
-    },
-    scheme: {
-      disc: payload.discretize.method,
-      time: payload.solve.method,
-    }
-  };
-};
+import { useT } from "../../i18n/i18n";
 
 const DEFAULT_TWEAKS: TweakValues = {
   accent: "indigo",
@@ -71,9 +31,16 @@ const DEFAULT_TWEAKS: TweakValues = {
   engine3D: "auto",
 };
 
-export function DesktopShell() {
+interface DesktopShellProps {
+  /** Called once after the shell has mounted (used to lift the loading screen). */
+  onReady?: () => void;
+}
+
+export function DesktopShell({ onReady }: DesktopShellProps = {}) {
+  const { t } = useT();
   const system = useStore((s) => s.system);
   const ui = useStore((s) => s.ui);
+  const runStatus = useStore((s) => s.run.status);
   const solve = useStore((s) => s.solve);
   const discretize = useStore((s) => s.discretize);
   const resetRun = useStore((s) => s.resetRun);
@@ -82,11 +49,28 @@ export function DesktopShell() {
   const loadPreset = useStore((s) => s.loadPreset);
   const startTour = useStore((s) => s.startTour);
 
+  // Signal the App that the studio has mounted, so the loading screen can lift.
+  useEffect(() => { onReady?.(); }, [onReady]);
+
+  // Auto-start the guided tour only on the very first launch. After it's been
+  // finished or skipped once (endTour sets the flag), it stays available via the
+  // Help menu but never forces itself on the user again.
   useEffect(() => {
-    startTour();
+    const seen = typeof localStorage !== "undefined" && localStorage.getItem(TOUR_SEEN_KEY);
+    if (!seen) startTour();
   }, [startTour]);
 
-  const [projectPath] = useState("pdesolver studio (em desenvolvimento) — unsaved");
+  // Manual (re)launch from the menu: the tour loads the wave demo, so guard
+  // against silently discarding unsaved edits.
+  const handleStartTour = useCallback(() => {
+    if (ui.dirty && !window.confirm(
+      "O tour carrega o exemplo de onda e vai descartar as alterações não salvas. Continuar?"
+    )) return;
+    startTour();
+  }, [ui.dirty, startTour]);
+
+  const [projectTitle, setProjectTitle] = useState<string | null>(null);
+  const [projectPath, setProjectPath] = useState("pdesolver studio (em desenvolvimento) — unsaved");
   const [aboutOpen, setAboutOpen] = useState(false);
   const [dictionaryOpen, setDictionaryOpen] = useState(false);
   const [tweaksOpen, setTweaksOpen] = useState(false);
@@ -109,6 +93,28 @@ export function DesktopShell() {
     setUI({ dirty: false });
   }, [resetRun, setUI]);
 
+  const handleSave = useCallback((asNew: boolean = false) => {
+    let title = projectTitle;
+    if (asNew || !title) {
+      const res = prompt(t("prompt.saveAs"), title || "Meu Projeto");
+      if (!res) return;
+      title = res;
+      setProjectTitle(title);
+    }
+    const presets = JSON.parse(localStorage.getItem("pdesolver_user_presets") || "[]");
+    const existingIndex = presets.findIndex((p: any) => p.title === title);
+    const newPreset = { id: "user-" + Date.now(), title, system, timestamp: Date.now() };
+    if (existingIndex >= 0) {
+      presets[existingIndex] = newPreset;
+    } else {
+      presets.push(newPreset);
+    }
+    localStorage.setItem("pdesolver_user_presets", JSON.stringify(presets));
+    toast.success("Projeto salvo com sucesso!");
+    setUI({ dirty: false });
+    setProjectPath("pdesolver studio (em desenvolvimento) — " + title);
+  }, [projectTitle, system, t, setUI]);
+
 
 
   useEffect(() => {
@@ -121,7 +127,7 @@ export function DesktopShell() {
           case "1": e.preventDefault(); setUI({ vizTab: "plot1d" }); break;
           case "2": e.preventDefault(); setUI({ vizTab: "heatmap" }); break;
           case "3": e.preventDefault(); setUI({ vizTab: "plot3d" }); break;
-          case "s": e.preventDefault(); setUI({ dirty: false }); break;
+          case "s": e.preventDefault(); handleSave(e.shiftKey); break;
           case ",": e.preventDefault(); setTweaksOpen((o) => !o); break;
         }
       }
@@ -132,10 +138,10 @@ export function DesktopShell() {
 
 
   const actions: MenuActions = {
-    new: () => { loadPreset(heatPreset()); setUI({ dirty: false }); },
+    new: () => { loadPreset(heatPreset()); setUI({ dirty: false }); setProjectTitle(null); setProjectPath("pdesolver studio (em desenvolvimento) — unsaved"); },
     open: () => setUI({ drawer: "gallery" }),
-    save: () => setUI({ dirty: false }),
-    saveAs: () => setUI({ dirty: false }),
+    save: () => handleSave(false),
+    saveAs: () => handleSave(true),
     importJson: async () => {
       if (bridge.isDesktop()) {
         try {
@@ -156,12 +162,12 @@ export function DesktopShell() {
                 }
               }));
             }
-            alert("Configuração importada com sucesso!");
+            toast.success("Configuração importada com sucesso!");
           } else {
-            alert("Formato de arquivo inválido.");
+            toast.error("Formato de arquivo inválido.");
           }
         } catch (err) {
-          alert("Erro ao importar arquivo: " + err);
+          toast.error("Erro ao importar arquivo: " + err);
         }
         return;
       }
@@ -180,10 +186,10 @@ export function DesktopShell() {
             if (config && Array.isArray(config.pdes)) {
               loadPreset(config);
             } else {
-              alert("Invalid configuration file format.");
+              toast.error("Formato de arquivo de configuração inválido.");
             }
           } catch (err) {
-            alert("Error reading file: " + err);
+            toast.error("Erro ao ler arquivo: " + err);
           }
         };
         reader.readAsText(file);
@@ -203,10 +209,10 @@ export function DesktopShell() {
           if (!path) return;
           const success = await bridge.saveJson(path, payload, result as any);
           if (success) {
-            alert("Configuração salva com sucesso!");
+            toast.success("Configuração salva com sucesso!");
           }
         } catch (err) {
-          alert("Erro ao salvar configuração: " + err);
+          toast.error("Erro ao salvar configuração: " + err);
         }
         return;
       }
@@ -223,75 +229,18 @@ export function DesktopShell() {
       URL.revokeObjectURL(url);
     },
     exportPng: async () => {
-      const canvas = document.querySelector(".viz-frame canvas") as HTMLCanvasElement || 
-                     document.querySelector(".viz-stage canvas") as HTMLCanvasElement ||
-                     document.querySelector(".grid-panel canvas") as HTMLCanvasElement;
-      const svg = document.querySelector(".viz-stage svg") as SVGGraphicsElement ||
-                  document.querySelector(".grid-panel svg") as SVGGraphicsElement;
-
-      const downloadUri = async (uri: string, name: string) => {
-        if (bridge.isDesktop()) {
-          try {
-            const path = await bridge.saveDialog(name);
-            if (!path) return;
-            const success = await bridge.savePng(path, uri);
-            if (success) {
-              alert("Imagem do gráfico salva com sucesso!");
-            }
-          } catch (err) {
-            alert("Erro ao salvar imagem: " + err);
-          }
-          return;
-        }
-        const link = document.createElement("a");
-        link.download = name;
-        link.href = uri;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      };
-
-      if (canvas) {
-        try {
-          const dataUrl = canvas.toDataURL("image/png");
-          await downloadUri(dataUrl, "pde_visualization.png");
-        } catch (err) {
-          console.error("Failed to export canvas image", err);
-          alert("Erro ao exportar imagem: " + err);
-        }
-      } else if (svg) {
-        try {
-          const svgString = new XMLSerializer().serializeToString(svg);
-          const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-          const blobURL = URL.createObjectURL(svgBlob);
-          const image = new Image();
-          image.onload = async () => {
-            const canvas2 = document.createElement("canvas");
-            canvas2.width = svg.clientWidth || 800;
-            canvas2.height = svg.clientHeight || 500;
-            const context = canvas2.getContext("2d");
-            if (context) {
-              context.fillStyle = "rgba(20, 20, 20, 1)";
-              context.fillRect(0, 0, canvas2.width, canvas2.height);
-              context.drawImage(image, 0, 0);
-            }
-            const png = canvas2.toDataURL("image/png");
-            await downloadUri(png, "pde_plot.png");
-            URL.revokeObjectURL(blobURL);
-          };
-          image.src = blobURL;
-        } catch (err) {
-          console.error("Failed to export SVG image", err);
-          alert("Erro ao exportar imagem: " + err);
-        }
-      } else {
-        alert("Nenhuma visualização ativa encontrada para exportar.");
-      }
+      const canvas = document.querySelector(
+        ".viz-frame canvas, .viz-stage canvas, .grid-panel canvas",
+      ) as HTMLCanvasElement | null;
+      const svg = document.querySelector(
+        ".viz-stage svg, .grid-panel svg",
+      ) as SVGGraphicsElement | null;
+      await exportImage(canvas ?? svg, "pde_visualization.png");
     },
     exportCsv: async () => {
       const fields = useStore.getState().run.fields;
       if (!fields || fields.length === 0) {
-        alert("Nenhum resultado de simulação disponível para exportar. Por favor, execute a simulação antes.");
+        toast.error("Nenhum resultado de simulação disponível. Execute a simulação antes de exportar.");
         return;
       }
       const firstField = fields[0];
@@ -336,10 +285,10 @@ export function DesktopShell() {
           if (!path) return;
           const success = await bridge.saveCsv(path, csvContent);
           if (success) {
-            alert("Dados CSV exportados com sucesso!");
+            toast.success("Dados CSV exportados com sucesso!");
           }
         } catch (err) {
-          alert("Erro ao exportar CSV: " + err);
+          toast.error("Erro ao exportar CSV: " + err);
         }
         return;
       }
@@ -370,7 +319,9 @@ export function DesktopShell() {
     about: () => setAboutOpen(true),
     dictionary: () => setDictionaryOpen(true),
     discretize: useCallback(() => { void discretize(); }, [discretize]),
-    startTour,
+    startTour: handleStartTour,
+    docs: () => window.open("https://github.com/maiocacedo/pdessolver-studio#readme", "_blank"),
+    shortcuts: () => window.open("https://github.com/maiocacedo/pdessolver-studio#readme", "_blank"),
   };
 
   const menuView = {
@@ -387,10 +338,9 @@ export function DesktopShell() {
         onRun={handleRun}
         onReset={handleReset}
         onOpen={() => setUI({ drawer: "gallery" })}
-        onSave={() => setUI({ dirty: false })}
+        onSave={() => handleSave(false)}
         vizPalette={tweaks.vizPalette}
         onPaletteChange={(p) => handleTweakChange("vizPalette", p)}
-        onExport={actions.exportPng}
       />
 
       <div className="desktop-body">
@@ -402,7 +352,9 @@ export function DesktopShell() {
         </ResizableSidebar>
 
         <main className="desktop-main" style={{ position: "relative" }}>
-          <VizPanel palette={tweaks.vizPalette as Palette} engine3D={tweaks.engine3D} />
+          <ErrorBoundary label="a visualização" resetKeys={[ui.vizTab, ui.layoutMode, runStatus]}>
+            <VizPanel palette={tweaks.vizPalette as Palette} engine3D={tweaks.engine3D} />
+          </ErrorBoundary>
           <button
             className="inspector-toggle-btn"
             onClick={actions.toggleInspector}
@@ -412,9 +364,7 @@ export function DesktopShell() {
           </button>
         </main>
 
-        {ui.showInspector && (
-          <Inspector onClose={() => setUI({ showInspector: false })} />
-        )}
+        <Inspector open={ui.showInspector} onClose={() => setUI({ showInspector: false })} />
       </div>
 
       <StatusBar projectPath={projectPath} />
@@ -431,6 +381,7 @@ export function DesktopShell() {
       {aboutOpen && <AboutModal onClose={() => setAboutOpen(false)} />}
       {dictionaryOpen && <DictionaryModal onClose={() => setDictionaryOpen(false)} />}
       <TourOverlay />
+      <ToastHost />
 
       <TweaksPanel
         open={tweaksOpen}

@@ -1,15 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useStore } from "../state/store";
 import type { FieldOut } from "../types";
 import { Icon } from "../components/Icon";
-import { bridge } from "../api/pywebview";
 import { Plot1D } from "./Plot1D";
 import { Heatmap } from "./Heatmap";
 import { Heatmap2D } from "./Heatmap2D";
-import { Surface3D } from "./Surface3D";
-import { Surface3DWebGL } from "./Surface3DWebGL";
+import { SolverConsole } from "./SolverConsole";
+import { exportContainerImage } from "./exportImage";
+import { toast } from "../components/toast/toastStore";
+import { useT } from "../i18n/i18n";
+import type { MsgKey } from "../i18n/messages";
 import type { Palette } from "./colormap";
+
+// 3D surfaces (and their Three.js dependency) are code-split: the chunk loads
+// only when a 3D view is first opened, keeping it out of the initial bundle.
+const Surface3D = lazy(() => import("./Surface3D").then((m) => ({ default: m.Surface3D })));
+const Surface3DWebGL = lazy(() => import("./Surface3DWebGL").then((m) => ({ default: m.Surface3DWebGL })));
 
 type VizTab = "plot1d" | "heatmap" | "plot3d";
 
@@ -35,6 +42,7 @@ function checkWebGLSupport(): boolean {
 const isWebGLSupported = typeof window !== "undefined" ? checkWebGLSupport() : false;
 
 function EmptyState({ solving }: { solving: boolean }) {
+  const { t } = useT();
   if (solving) {
     return (
       <div style={{ textAlign: "center", color: "var(--text-muted)" }}>
@@ -43,9 +51,9 @@ function EmptyState({ solving }: { solving: boolean }) {
           border: "2.5px solid var(--accent-faint)", borderTopColor: "var(--accent)",
           animation: "spin 0.7s linear infinite",
         }} />
-        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>Solving…</div>
+        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{t("viz.solving")}</div>
         <div style={{ fontSize: 12, marginTop: 4, fontFamily: "var(--font-mono)" }}>
-          discretize → step → assemble
+          {t("viz.solving.hint")}
         </div>
       </div>
     );
@@ -60,114 +68,53 @@ function EmptyState({ solving }: { solving: boolean }) {
         <Icon.Plot />
       </div>
       <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", marginBottom: 6 }}>
-        Run the solver to see results
+        {t("viz.empty.subtitle")}
       </div>
       <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>
-        Press <span className="kbd">F5</span> or click{" "}
-        <span className="kbd">▶ Run</span> to discretize and integrate.
+        {t("viz.empty.hint")}
       </div>
     </div>
   );
 }
 
-const TABS: Array<{ id: VizTab; label: string; glyph: ReactNode }> = [
-  { id: "plot1d", label: "1D profile", glyph: <Icon.Plot /> },
-  { id: "heatmap", label: "Heatmap", glyph: <Icon.Heatmap /> },
-  { id: "plot3d", label: "Surface 3D", glyph: <Icon.Cube /> },
+/** Index of the value in `ts` (sorted ascending) closest to `target`, via binary search. */
+function nearestTimeIndex(ts: number[], target: number): number {
+  if (ts.length === 0) return 0;
+  if (target <= ts[0]) return 0;
+  if (target >= ts[ts.length - 1]) return ts.length - 1;
+  let lo = 0;
+  let hi = ts.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (ts[mid] < target) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  // `lo` is the first index with ts[lo] >= target; pick the nearer neighbour.
+  return Math.abs(ts[lo] - target) < Math.abs(target - ts[lo - 1]) ? lo : lo - 1;
+}
+
+function Loading3D() {
+  const { t } = useT();
+  return (
+    <div style={{ textAlign: "center", color: "var(--text-muted)" }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: "50%", margin: "0 auto 12px",
+        border: "2.5px solid var(--accent-faint)", borderTopColor: "var(--accent)",
+        animation: "spin 0.7s linear infinite",
+      }} />
+      <div style={{ fontSize: 12.5 }}>{t("viz.loading3d")}</div>
+    </div>
+  );
+}
+
+const TABS: Array<{ id: VizTab; labelKey: MsgKey; glyph: ReactNode }> = [
+  { id: "plot1d", labelKey: "viz.tab.plot1d", glyph: <Icon.Plot /> },
+  { id: "heatmap", labelKey: "viz.tab.heatmap", glyph: <Icon.Heatmap /> },
+  { id: "plot3d", labelKey: "viz.tab.plot3d", glyph: <Icon.Cube /> },
 ];
 
-interface ConsoleProps {
-  status: "pristine" | "solving" | "solved" | "error";
-  lastRunMs: number;
-  error: string | null;
-  meta?: { converged: boolean; elapsed_ms: number; backend: string } | null;
-  system: any;
-}
-
-function SolverConsole({ status, lastRunMs, error, meta, system }: ConsoleProps) {
-  const is2D = !!system.domain.ymin && system.mesh.ny !== undefined;
-  
-  const statStatus = status.toUpperCase();
-  const statBackend = meta?.backend ? meta.backend.toUpperCase() : "N/A";
-  const statTime = status === "solved" ? `${lastRunMs.toFixed(1)} ms` : "N/A";
-  const statConverged = meta?.converged !== undefined ? (meta.converged ? "YES" : "NO") : "N/A";
-  const statGrid = is2D 
-    ? `${system.mesh.nx} × ${system.mesh.ny} × ${system.mesh.nt}`
-    : `${system.mesh.nx} × ${system.mesh.nt}`;
-
-  const lines: Array<{ text: string; type: "info" | "success" | "error" | "default" }> = [];
-  lines.push({ text: `[SYSTEM] Initialized PDESolver Studio (em desenvolvimento).`, type: "default" });
-  
-  if (status === "pristine") {
-    lines.push({ text: `[INFO] Ready to solve. Click "Run" or press F5 to start.`, type: "info" });
-  } else {
-    lines.push({ text: `[INFO] Launching solver backend...`, type: "info" });
-    lines.push({ 
-      text: `[INFO] Domain boundaries: X=[${system.domain.xmin}, ${system.domain.xmax}]${is2D ? ` Y=[${system.domain.ymin}, ${system.domain.ymax}]` : ""}`,
-      type: "default" 
-    });
-    lines.push({ 
-      text: `[INFO] Discretization scheme: ${system.scheme.disc.toUpperCase()} (mesh: ${statGrid})`, 
-      type: "default" 
-    });
-    lines.push({ 
-      text: `[INFO] Time integration scheme: ${system.scheme.time.toUpperCase()} (t0=${system.domain.t0}, tf=${system.domain.tf})`, 
-      type: "default" 
-    });
-    
-    if (status === "solving") {
-      lines.push({ text: `[INFO] Solving system equations...`, type: "info" });
-    } else if (status === "solved") {
-      lines.push({ text: `[SUCCESS] Simulation finished successfully.`, type: "success" });
-      if (meta) {
-        lines.push({ text: `[SUCCESS] Backend: ${meta.backend} | Solver elapsed: ${meta.elapsed_ms.toFixed(2)} ms`, type: "success" });
-        lines.push({ text: `[SUCCESS] Converged: ${meta.converged ? "Yes" : "No"}`, type: "success" });
-      }
-      lines.push({ text: `[SUCCESS] Total client execution: ${lastRunMs.toFixed(1)} ms. Ready for visualization.`, type: "success" });
-    } else if (status === "error") {
-      lines.push({ text: `[ERROR] Simulation failed!`, type: "error" });
-      lines.push({ text: `[ERROR] Details: ${error}`, type: "error" });
-    }
-  }
-
-  return (
-    <div className="console-container">
-      <div className="console-stats">
-        <div className="console-stat-card">
-          <div className="console-stat-label">Status</div>
-          <div className="console-stat-value" style={{ 
-            color: status === "solved" ? "var(--success)" : status === "error" ? "oklch(0.65 0.2 20)" : "var(--text)"
-          }}>{statStatus}</div>
-        </div>
-        <div className="console-stat-card">
-          <div className="console-stat-label">Grid Size</div>
-          <div className="console-stat-value">{statGrid}</div>
-        </div>
-        <div className="console-stat-card">
-          <div className="console-stat-label">Execution Time</div>
-          <div className="console-stat-value">{statTime}</div>
-        </div>
-        <div className="console-stat-card">
-          <div className="console-stat-label">Converged</div>
-          <div className="console-stat-value">{statConverged}</div>
-        </div>
-        <div className="console-stat-card">
-          <div className="console-stat-label">Backend</div>
-          <div className="console-stat-value">{statBackend}</div>
-        </div>
-      </div>
-      <div className="console-log">
-        {lines.map((line, idx) => (
-          <div key={idx} className="console-log-line" data-type={line.type}>
-            {line.text}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engine3D = "auto" }: Props) {
+  const { t } = useT();
   const storeTab = useStore((s) => s.ui.vizTab);
   const setUI = useStore((s) => s.setUI);
   const status = useStore((s) => s.run.status);
@@ -185,72 +132,18 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
   const visibleFieldIndices = useStore((s) => s.run.visibleFieldIndices);
   const toggleVisibleField = useStore((s) => s.toggleVisibleField);
 
+  // Approximate-result banner: shown when the in-browser JS fallback produced the
+  // current result (no real backend). Reappears on every new approximate solve.
+  const [approxDismissed, setApproxDismissed] = useState(false);
+  useEffect(() => {
+    if (runMeta?.approximate) setApproxDismissed(false);
+  }, [runMeta]);
+
   const exportPanelImage = async (panelId: "plot1d" | "heatmap" | "plot3d") => {
-    const container = document.querySelector(`.grid-panel[data-panel="${panelId}"]`) || 
-                      document.querySelector(".viz-frame");
+    const container = document.querySelector(`.grid-panel[data-panel="${panelId}"]`)
+      ?? document.querySelector(".viz-frame");
     if (!container) return;
-    
-    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
-    const svg = container.querySelector("svg") as SVGGraphicsElement;
-
-    const downloadUri = async (uri: string, name: string) => {
-      if (bridge.isDesktop()) {
-        try {
-          const path = await bridge.saveDialog(name);
-          if (!path) return;
-          const success = await bridge.savePng(path, uri);
-          if (success) {
-            alert("Imagem do gráfico salva com sucesso!");
-          }
-        } catch (err) {
-          alert("Erro ao salvar imagem: " + err);
-        }
-        return;
-      }
-      const link = document.createElement("a");
-      link.download = name;
-      link.href = uri;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
-
-    if (canvas) {
-      try {
-        const dataUrl = canvas.toDataURL("image/png");
-        await downloadUri(dataUrl, `${panelId}_visualization.png`);
-      } catch (err) {
-        console.error("Failed to export canvas image", err);
-        alert("Erro ao exportar imagem: " + err);
-      }
-    } else if (svg) {
-      try {
-        const svgString = new XMLSerializer().serializeToString(svg);
-        const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-        const blobURL = URL.createObjectURL(svgBlob);
-        const image = new Image();
-        image.onload = async () => {
-          const canvas2 = document.createElement("canvas");
-          canvas2.width = svg.clientWidth || 800;
-          canvas2.height = svg.clientHeight || 500;
-          const context = canvas2.getContext("2d");
-          if (context) {
-            context.fillStyle = "rgba(20, 20, 20, 1)";
-            context.fillRect(0, 0, canvas2.width, canvas2.height);
-            context.drawImage(image, 0, 0);
-          }
-          const png = canvas2.toDataURL("image/png");
-          await downloadUri(png, `${panelId}_plot.png`);
-          URL.revokeObjectURL(blobURL);
-        };
-        image.src = blobURL;
-      } catch (err) {
-        console.error("Failed to export SVG image", err);
-        alert("Erro ao exportar imagem: " + err);
-      }
-    } else {
-      alert("Nenhuma imagem de visualização encontrada para exportar.");
-    }
+    await exportContainerImage(container, `${panelId}.png`);
   };
 
   // Allow controlled tab from parent (DesktopShell menu) or fall back to store
@@ -286,10 +179,10 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
   const useWebGL = engine3D === "webgl" || (engine3D === "auto" && isWebGLSupported);
 
   const render3DPlot = () => {
-    if (useWebGL) {
-      return <Surface3DWebGL field={field!} palette={palette} tIndex={tIndex} />;
-    }
-    return <Surface3D field={field!} palette={palette} tIndex={tIndex} />;
+    const surface = useWebGL
+      ? <Surface3DWebGL field={field!} palette={palette} tIndex={tIndex} />
+      : <Surface3D field={field!} palette={palette} tIndex={tIndex} />;
+    return <Suspense fallback={<Loading3D />}>{surface}</Suspense>;
   };
 
   const [recording, setRecording] = useState(false);
@@ -318,7 +211,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
     }
 
     if (!canvas) {
-      alert("No canvas found to record! Video recording is optimized for canvas-based views (Heatmaps, 2D simulation, and 3D surface). Please switch tab/view to record.");
+      toast.error("Nenhum canvas para gravar. A gravação funciona nas views de canvas (Heatmap, 2D e Superfície 3D) — troque de aba/view para gravar.");
       return;
     }
 
@@ -327,7 +220,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
     try {
       const stream = (canvas as any).captureStream ? (canvas as any).captureStream(30) : null;
       if (!stream) {
-        alert("Canvas recording is not supported in this browser.");
+        toast.error("Gravação de canvas não suportada neste navegador.");
         return;
       }
 
@@ -372,7 +265,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
       recorder.stop();
     } catch (err) {
       console.error("Recording failed", err);
-      alert("Recording failed: " + err);
+      toast.error("Falha na gravação: " + err);
     } finally {
       setRecording(false);
     }
@@ -417,17 +310,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
         }
         timeRef.current = targetPhysicalTime;
 
-        const ts = field.ts;
-        let closestIdx = 0;
-        let minDiff = Infinity;
-        for (let i = 0; i < ts.length; i++) {
-          const diff = Math.abs(ts[i] - targetPhysicalTime);
-          if (diff < minDiff) {
-            minDiff = diff;
-            closestIdx = i;
-          }
-        }
-        setTIndex(closestIdx);
+        setTIndex(nearestTimeIndex(field.ts, targetPhysicalTime));
       }
       previousTimeRef.current = realTimeMs;
       requestRef.current = requestAnimationFrame(animate);
@@ -461,13 +344,13 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
 
   const fn = field?.meta?.fieldName ?? "u";
   const frameTitle = empty
-    ? "Nothing to plot yet"
+    ? t("viz.empty.title")
     : is2D
       ? tab === "heatmap"
         ? `${fn}(x, y) — t = ${field.ts[tIndex].toFixed(4)}`
         : tab === "plot3d"
           ? `Surface ${fn}(x, y) — t = ${field.ts[tIndex].toFixed(4)}`
-          : "Not available for 2D fields"
+          : t("viz.notAvailable2D")
       : tab === "plot1d"
         ? plotMode === "all" ? `Profiles for ${fn}(x, t)` : `${fn}(x, t = ${field.ts[tIndex].toFixed(4)})`
         : tab === "heatmap" ? `${fn}(x, t) over the (x, t) plane`
@@ -484,13 +367,13 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
   const getPanelTitle = (panelId: "plot1d" | "heatmap" | "plot3d" | "console") => {
     switch (panelId) {
       case "plot1d":
-        return "1D Profile";
+        return t("viz.panel.plot1d");
       case "heatmap":
-        return is2D ? "Heatmap 2D — u(x,y)" : "Heatmap 1D";
+        return is2D ? "Heatmap 2D — u(x,y)" : t("viz.panel.heatmap");
       case "plot3d":
-        return is2D ? "Surface 3D — u(x,y,t)" : "Surface 3D";
+        return is2D ? "Surface 3D — u(x,y,t)" : t("viz.panel.plot3d");
       case "console":
-        return "Solver Statistics & Console";
+        return t("viz.panel.console");
     }
   };
 
@@ -539,9 +422,9 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
               className="panel-action"
               onClick={() => exportPanelImage(panelId as any)}
               title="Export Image"
-              style={{ display: "flex", alignItems: "center", gap: 4 }}
+              style={{ display: "flex", alignItems: "center", gap: 5 }}
             >
-              📥 Exportar
+              <Icon.Export /> {t("viz.export")}
             </button>
           )}
           <button
@@ -549,7 +432,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
             onClick={() => toggleMaximizedPanel(panelId)}
             title={isMax ? "Restore grid layout" : "Maximize panel"}
           >
-            {isMax ? "↙ Restore" : "↗ Maximize"}
+            {isMax ? `↙ ${t("viz.restore")}` : `↗ ${t("viz.maximize")}`}
           </button>
         </div>
       </div>
@@ -569,7 +452,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
         if (is2D) {
           return (
             <div style={{ textAlign: "center", color: "var(--text-faint)", fontSize: 13 }}>
-              Not available for 2D fields
+              {t("viz.notAvailable2D")}
             </div>
           );
         }
@@ -596,19 +479,35 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
 
   return (
     <>
+      {runMeta?.approximate && !approxDismissed && (
+        <div className="viz-approx-banner" role="status">
+          <span className="viz-approx-icon"><Icon.Alert /></span>
+          <span className="viz-approx-text">
+            <b>{t("viz.approx.title")}</b> — {t("viz.approx.msg")}
+          </span>
+          <button
+            className="viz-approx-close"
+            onClick={() => setApproxDismissed(true)}
+            aria-label="Dispensar aviso"
+            title="Dispensar"
+          >
+            <Icon.Close />
+          </button>
+        </div>
+      )}
       <div className="tabs">
         {layoutMode === "tabs" ? (
           TABS.filter((tb) => !(isCurrent2D && tb.id === "plot1d")).map((tb) => (
             <button key={tb.id} className="tab" data-active={tab === tb.id ? "1" : "0"}
                     onClick={() => setTab(tb.id)}>
               <span className="tab-glyph">{tb.glyph}</span>
-              {tb.label}
+              {t(tb.labelKey)}
             </button>
           ))
         ) : (
           <div className="tab" data-active="1" style={{ cursor: "default" }}>
             <span className="tab-glyph"><Icon.Gallery /></span>
-            Dashboard Grid
+            {t("viz.layout.dashboard")}
           </div>
         )}
         <div style={{ flex: 1 }} />
@@ -617,9 +516,9 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
           {layoutMode === "tabs" && tab === "plot1d" && !empty && (
             <div className="seg" style={{ marginRight: 8, marginLeft: 8 }}>
               <button data-active={plotMode === "snapshots" ? "1" : "0"}
-                      onClick={() => setPlotMode("snapshots")}>Snapshot</button>
+                      onClick={() => setPlotMode("snapshots")}>{t("viz.snapshot")}</button>
               <button data-active={plotMode === "all" ? "1" : "0"}
-                      onClick={() => setPlotMode("all")}>All profiles</button>
+                      onClick={() => setPlotMode("all")}>{t("viz.allProfiles")}</button>
             </div>
           )}
           
@@ -627,11 +526,11 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
             <button data-active={layoutMode === "tabs" ? "1" : "0"}
                     onClick={() => {
                       if (layoutMode === "grid") toggleLayoutMode();
-                    }}>Tabs View</button>
+                    }}>{t("viz.layout.tabs")}</button>
             <button data-active={layoutMode === "grid" ? "1" : "0"}
                     onClick={() => {
                       if (layoutMode === "tabs") toggleLayoutMode();
-                    }}>Grid View</button>
+                    }}>{t("viz.layout.grid")}</button>
           </div>
         </div>
       </div>
@@ -672,9 +571,9 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                   className="panel-action"
                   onClick={() => exportPanelImage(tab)}
                   title="Export Image"
-                  style={{ display: "flex", alignItems: "center", gap: 4, height: "fit-content" }}
+                  style={{ display: "flex", alignItems: "center", gap: 5, height: "fit-content" }}
                 >
-                  📥 Exportar Gráfico
+                  <Icon.Export /> {t("viz.exportChart")}
                 </button>
               )}
             </div>
@@ -688,7 +587,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                   render3DPlot()
                 ) : (
                   <div style={{ textAlign: "center", color: "var(--text-faint)", fontSize: 13 }}>
-                    Not available for 2D fields — switch to Heatmap or Surface 3D
+                    {t("viz.notAvailable2D")}
                   </div>
                 )
               ) : tab === "plot1d" ? (
@@ -703,7 +602,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
         )}
 
         {showSlider && field && (
-          <div className="bottom-rail" style={{ padding: 0 }}>
+          <div className="bottom-rail" style={{ padding: "0 100px 20px 24px" }}>
             <div className="time-slider">
               <button className="play" aria-label={playing ? "Pause" : "Play"}
                       disabled={recording}
@@ -733,17 +632,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                      const t0 = field.ts[0];
                      const tf = field.ts[field.ts.length - 1];
                      const targetTime = t0 + f * (tf - t0);
-                     
-                     let closestIdx = 0;
-                     let minDiff = Infinity;
-                     for (let i = 0; i < field.ts.length; i++) {
-                       const diff = Math.abs(field.ts[i] - targetTime);
-                       if (diff < minDiff) {
-                         minDiff = diff;
-                         closestIdx = i;
-                       }
-                     }
-                     setTIndex(closestIdx);
+                     setTIndex(nearestTimeIndex(field.ts, targetTime));
                    }}>
                 {(() => {
                   const t0 = field.ts[0];
@@ -766,46 +655,24 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                 <Icon.Reset />
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: 6 }}>
-                <span style={{ fontSize: 10, color: "var(--text-faint)" }}>De:</span>
+                <span className="rec-step-label">De:</span>
                 <input
                   type="number"
                   min="1"
                   max={field.ts.length}
                   value={recStartStep}
                   onChange={(e) => setRecStartStep(Math.max(1, Math.min(field.ts.length, Number(e.target.value) || 1)))}
-                  style={{
-                    width: 44,
-                    height: 22,
-                    background: "var(--surface-sunk)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 4,
-                    color: "var(--text)",
-                    fontSize: 10,
-                    textAlign: "center",
-                    padding: "2px 4px",
-                    fontFamily: "var(--font-mono)",
-                  }}
+                  className="rec-step-input"
                   disabled={recording}
                 />
-                <span style={{ fontSize: 10, color: "var(--text-faint)" }}>Até:</span>
+                <span className="rec-step-label">Até:</span>
                 <input
                   type="number"
                   min="1"
                   max={field.ts.length}
                   value={recEndStep ?? field.ts.length}
                   onChange={(e) => setRecEndStep(Math.max(1, Math.min(field.ts.length, Number(e.target.value) || field.ts.length)))}
-                  style={{
-                    width: 44,
-                    height: 22,
-                    background: "var(--surface-sunk)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 4,
-                    color: "var(--text)",
-                    fontSize: 10,
-                    textAlign: "center",
-                    padding: "2px 4px",
-                    fontFamily: "var(--font-mono)",
-                  }}
+                  className="rec-step-input"
                   disabled={recording}
                 />
               </div>
@@ -814,20 +681,26 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                       disabled={recording}
                       style={{
                         marginLeft: 6,
+                        width: "auto",
+                        padding: "0 12px",
+                        borderRadius: "14px",
                         color: recording ? "oklch(0.65 0.25 20)" : "inherit",
                         position: "relative"
                       }}>
                 {recording ? (
-                  <span style={{
-                    display: "inline-block",
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: "oklch(0.65 0.25 20)",
-                    boxShadow: "0 0 8px oklch(0.65 0.25 20)"
-                  }} />
+                  <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 500 }}>
+                    <span style={{
+                      display: "inline-block",
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "oklch(0.65 0.25 20)",
+                      boxShadow: "0 0 8px oklch(0.65 0.25 20)"
+                    }} />
+                    {t("viz.rec")}
+                  </span>
                 ) : (
-                  <span style={{ fontSize: 11 }}>📹 Rec</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 500 }}><Icon.Record /> {t("viz.rec")}</span>
                 )}
               </button>
             </div>

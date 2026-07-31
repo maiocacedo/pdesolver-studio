@@ -8,10 +8,9 @@ interface Props {
   onSave: () => void;
   vizPalette: string;
   onPaletteChange?: (palette: string) => void;
-  onExport: () => void;
 }
 
-export function Toolbar({ onRun, onReset, onOpen, onSave, vizPalette, onPaletteChange, onExport }: Props) {
+export function Toolbar({ onRun, onReset, onOpen, onSave, vizPalette, onPaletteChange }: Props) {
   const status = useStore((s) => s.run.status);
   const domain = useStore((s) => s.system.domain);
   const mesh = useStore((s) => s.system.mesh);
@@ -58,12 +57,6 @@ export function Toolbar({ onRun, onReset, onOpen, onSave, vizPalette, onPaletteC
       </button>
       <button className="tb-btn" onClick={onSave} title="Save (Ctrl+S)">
         <Icon.Save /> Save
-      </button>
-
-      <div className="tb-sep" />
-
-      <button className="tb-btn" onClick={onExport} title="Export PNG">
-        <Icon.Export /> Export
       </button>
 
       <div className="tb-sep" />

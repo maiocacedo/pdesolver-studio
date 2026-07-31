@@ -17,6 +17,7 @@ import type {
 } from "../types";
 import { bridge } from "../api/pywebview";
 import { heatPreset, wave1DPreset } from "../gallery/examples";
+import { TOUR_STEPS } from "./tourSteps";
 
 // ── per-PDE config (UI shape — slightly richer than PDEPayload) ─────
 export interface PDEConfig {
@@ -106,6 +107,9 @@ interface Store {
   nextTourStep(): void;
   prevTourStep(): void;
 }
+
+/** localStorage flag: set once the guided tour has been finished or skipped. */
+export const TOUR_SEEN_KEY = "pde-tour-seen";
 
 export const useStore = create<Store>((set, get) => ({
   system: heatPreset(),
@@ -270,54 +274,24 @@ export const useStore = create<Store>((set, get) => ({
     }));
   },
 
-  endTour: () => set((s) => ({
-    ui: { ...s.ui, tourActive: false, tourStep: 0 }
-  })),
-
-  nextTourStep: () => set((s) => {
-    const nextStep = s.ui.tourStep + 1;
-    let patch: Partial<UIState> = { tourStep: nextStep };
-
-    if (nextStep === 3) {
-      patch.vizTab = "plot1d";
-      patch.layoutMode = "tabs";
-    } else if (nextStep === 4) {
-      patch.vizTab = "heatmap";
-      patch.layoutMode = "tabs";
-    } else if (nextStep === 5) {
-      patch.vizTab = "plot3d";
-      patch.layoutMode = "tabs";
-    } else if (nextStep === 6) {
-      patch.layoutMode = "grid";
-      patch.maximizedPanel = null;
-    } else if (nextStep === 7) {
-      patch.showInspector = true;
+  endTour: () => {
+    // Remember that the tour was seen so it doesn't auto-start again.
+    if (typeof localStorage !== "undefined") {
+      try { localStorage.setItem(TOUR_SEEN_KEY, "1"); } catch { /* ignore */ }
     }
+    set((s) => ({ ui: { ...s.ui, tourActive: false, tourStep: 0 } }));
+  },
 
-    return { ui: { ...s.ui, ...patch } };
+  // The per-step UI choreography (which viz tab / layout / inspector each step
+  // needs) is colocated with the steps in tourSteps.tsx via `onEnter`.
+  nextTourStep: () => set((s) => {
+    const nextStep = Math.min(TOUR_STEPS.length - 1, s.ui.tourStep + 1);
+    return { ui: { ...s.ui, tourStep: nextStep, ...(TOUR_STEPS[nextStep]?.onEnter ?? {}) } };
   }),
 
   prevTourStep: () => set((s) => {
     const prevStep = Math.max(0, s.ui.tourStep - 1);
-    let patch: Partial<UIState> = { tourStep: prevStep };
-
-    if (prevStep === 3) {
-      patch.vizTab = "plot1d";
-      patch.layoutMode = "tabs";
-    } else if (prevStep === 4) {
-      patch.vizTab = "heatmap";
-      patch.layoutMode = "tabs";
-    } else if (prevStep === 5) {
-      patch.vizTab = "plot3d";
-      patch.layoutMode = "tabs";
-    } else if (prevStep === 6) {
-      patch.layoutMode = "grid";
-      patch.maximizedPanel = null;
-    } else if (prevStep === 7) {
-      patch.showInspector = true;
-    }
-
-    return { ui: { ...s.ui, ...patch } };
+    return { ui: { ...s.ui, tourStep: prevStep, ...(TOUR_STEPS[prevStep]?.onEnter ?? {}) } };
   }),
 
   solve: async () => {
@@ -419,7 +393,7 @@ export const useStore = create<Store>((set, get) => ({
   }),
 }));
 
-function validateSystemConfig(sys: SystemConfig) {
+export function validateSystemConfig(sys: SystemConfig) {
   const is2D = !!sys.domain.ymin && sys.mesh.ny !== undefined;
 
   for (const pde of sys.pdes) {
