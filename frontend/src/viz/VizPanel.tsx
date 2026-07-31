@@ -602,7 +602,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
         )}
 
         {showSlider && field && (
-          <div className="bottom-rail" style={{ padding: 0 }}>
+          <div className="bottom-rail" style={{ padding: "0 100px 20px 24px" }}>
             <div className="time-slider">
               <button className="play" aria-label={playing ? "Pause" : "Play"}
                       disabled={recording}
@@ -681,20 +681,26 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                       disabled={recording}
                       style={{
                         marginLeft: 6,
+                        width: "auto",
+                        padding: "0 12px",
+                        borderRadius: "14px",
                         color: recording ? "oklch(0.65 0.25 20)" : "inherit",
                         position: "relative"
                       }}>
                 {recording ? (
-                  <span style={{
-                    display: "inline-block",
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: "oklch(0.65 0.25 20)",
-                    boxShadow: "0 0 8px oklch(0.65 0.25 20)"
-                  }} />
+                  <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 500 }}>
+                    <span style={{
+                      display: "inline-block",
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "oklch(0.65 0.25 20)",
+                      boxShadow: "0 0 8px oklch(0.65 0.25 20)"
+                    }} />
+                    {t("viz.rec")}
+                  </span>
                 ) : (
-                  <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}><Icon.Record /> {t("viz.rec")}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 500 }}><Icon.Record /> {t("viz.rec")}</span>
                 )}
               </button>
             </div>
