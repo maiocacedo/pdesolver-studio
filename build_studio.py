@@ -34,11 +34,14 @@ def main():
         "PyInstaller",
         "--onefile",
         "--noconsole",
-        "--splash=splash.png",
         "--name=pdesolver-studio",
         f"--add-data={add_data_flag}",
     ]
     
+    import platform
+    if platform.system() == "Windows":
+        pyinstaller_cmd.insert(3, "--splash=splash.png")
+
     # Add sibling PDESsolver to search paths if it exists locally
     sibling_pdesolver = os.path.abspath(os.path.join(script_dir, "..", "PDESsolver"))
     if os.path.exists(sibling_pdesolver):
