@@ -42,6 +42,7 @@ function checkWebGLSupport(): boolean {
 const isWebGLSupported = typeof window !== "undefined" ? checkWebGLSupport() : false;
 
 function EmptyState({ solving }: { solving: boolean }) {
+  const { t } = useT();
   if (solving) {
     return (
       <div style={{ textAlign: "center", color: "var(--text-muted)" }}>
@@ -50,9 +51,9 @@ function EmptyState({ solving }: { solving: boolean }) {
           border: "2.5px solid var(--accent-faint)", borderTopColor: "var(--accent)",
           animation: "spin 0.7s linear infinite",
         }} />
-        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>Solving…</div>
+        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{t("viz.solving")}</div>
         <div style={{ fontSize: 12, marginTop: 4, fontFamily: "var(--font-mono)" }}>
-          discretize → step → assemble
+          {t("viz.solving.hint")}
         </div>
       </div>
     );
@@ -67,11 +68,10 @@ function EmptyState({ solving }: { solving: boolean }) {
         <Icon.Plot />
       </div>
       <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", marginBottom: 6 }}>
-        Run the solver to see results
+        {t("viz.empty.subtitle")}
       </div>
       <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>
-        Press <span className="kbd">F5</span> or click{" "}
-        <span className="kbd">▶ Run</span> to discretize and integrate.
+        {t("viz.empty.hint")}
       </div>
     </div>
   );
@@ -344,13 +344,13 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
 
   const fn = field?.meta?.fieldName ?? "u";
   const frameTitle = empty
-    ? "Nothing to plot yet"
+    ? t("viz.empty.title")
     : is2D
       ? tab === "heatmap"
         ? `${fn}(x, y) — t = ${field.ts[tIndex].toFixed(4)}`
         : tab === "plot3d"
           ? `Surface ${fn}(x, y) — t = ${field.ts[tIndex].toFixed(4)}`
-          : "Not available for 2D fields"
+          : t("viz.notAvailable2D")
       : tab === "plot1d"
         ? plotMode === "all" ? `Profiles for ${fn}(x, t)` : `${fn}(x, t = ${field.ts[tIndex].toFixed(4)})`
         : tab === "heatmap" ? `${fn}(x, t) over the (x, t) plane`
@@ -452,7 +452,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
         if (is2D) {
           return (
             <div style={{ textAlign: "center", color: "var(--text-faint)", fontSize: 13 }}>
-              Not available for 2D fields
+              {t("viz.notAvailable2D")}
             </div>
           );
         }
@@ -483,8 +483,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
         <div className="viz-approx-banner" role="status">
           <span className="viz-approx-icon"><Icon.Alert /></span>
           <span className="viz-approx-text">
-            Sem backend real conectado — <b>resultado aproximado</b>. O solver JS reconhece
-            apenas alguns perfis de difusão e ignora a EDP e as condições de contorno.
+            <b>{t("viz.approx.title")}</b> — {t("viz.approx.msg")}
           </span>
           <button
             className="viz-approx-close"
@@ -588,7 +587,7 @@ export function VizPanel({ palette = "viridis", tab: tabProp, onTabChange, engin
                   render3DPlot()
                 ) : (
                   <div style={{ textAlign: "center", color: "var(--text-faint)", fontSize: 13 }}>
-                    Not available for 2D fields — switch to Heatmap or Surface 3D
+                    {t("viz.notAvailable2D")}
                   </div>
                 )
               ) : tab === "plot1d" ? (
