@@ -74,15 +74,17 @@ class Api:
 
     # ── dialogs (use the OS file picker) ─────────────────────────────
     def open_dialog(self) -> str | None:
+        import webview
         if not self._window:
             return None
         result = self._window.create_file_dialog(
-            dialog_type=10,  # OPEN_DIALOG
+            dialog_type=webview.OPEN_DIALOG,
             file_types=("pdesolver JSON (*.json)", "All files (*.*)"),
         )
         return result[0] if result else None
 
     def save_dialog(self, filename: str = "problem.json") -> str | None:
+        import webview
         if not self._window:
             return None
         ext = filename.split(".")[-1].lower() if "." in filename else ""
@@ -96,7 +98,7 @@ class Api:
             file_types = ("All files (*.*)",)
 
         result = self._window.create_file_dialog(
-            dialog_type=20,  # SAVE_DIALOG
+            dialog_type=webview.SAVE_DIALOG,
             save_filename=filename,
             file_types=file_types,
         )
