@@ -341,7 +341,6 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
         onSave={() => handleSave(false)}
         vizPalette={tweaks.vizPalette}
         onPaletteChange={(p) => handleTweakChange("vizPalette", p)}
-        onExport={actions.exportPng}
       />
 
       <div className="desktop-body">
