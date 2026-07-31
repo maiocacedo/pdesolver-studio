@@ -32,7 +32,7 @@ def main():
         sys.executable,
         "-m",
         "PyInstaller",
-        "--onefile",
+        "--onedir",
         "--noconsole",
         "--name=pdesolver-studio",
         f"--add-data={add_data_flag}",
