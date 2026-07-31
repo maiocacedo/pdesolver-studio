@@ -7,7 +7,7 @@ interface ConsoleProps {
   system: any;
 }
 
-import { useT } from "../../i18n/i18n";
+import { useT } from "../i18n/i18n";
 
 export function SolverConsole({ status, lastRunMs, error, meta, system }: ConsoleProps) {
   const { t } = useT();
