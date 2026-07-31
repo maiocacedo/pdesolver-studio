@@ -53,19 +53,19 @@ export function Inspector({ open, onClose }: Props) {
         <div className="inspector-section">
           <div className="inspector-section-title">{t("inspector.section.problem")}</div>
           <div className="inspector-kv">
-            <span className="k" title="A Equação Diferencial Parcial sendo resolvida">Equation</span>
+            <span className="k" title="A Equação Diferencial Parcial sendo resolvida">{t("inspector.term.equation")}</span>
             <span className="v" style={{ wordBreak: "break-all", whiteSpace: "normal", fontFamily: "var(--font-mono)", fontSize: 11 }}>{activePde.eq}</span>
-            <span className="k" title="A função incógnita a ser resolvida (ex: u(x,t))">Function</span>
+            <span className="k" title="A função incógnita a ser resolvida (ex: u(x,t))">{t("inspector.term.function")}</span>
             <span className="v">{activePde.func}({is2D ? "x, y" : "x"}, t)</span>
-            <span className="k" title="O domínio espacial e temporal: [xmin, xmax] x [t0, tf]">Domain</span>
+            <span className="k" title="O domínio espacial e temporal: [xmin, xmax] x [t0, tf]">{t("inspector.term.domain")}</span>
             <span className="v">[{domain.xmin}, {domain.xmax}]{is2D ? ` × [${domain.ymin}, ${domain.ymax}]` : ""} × [{domain.t0}, {domain.tf}]</span>
-            <span className="k" title="Condição Inicial: o perfil espacial em t = 0">IC</span>
+            <span className="k" title="Condição Inicial: o perfil espacial em t = 0">{t("inspector.term.ic")}</span>
             <span className="v" style={{ whiteSpace: "normal", wordBreak: "break-all" }}>
               {activePde.ic}
             </span>
-            <span className="k" title="Condição de contorno na borda oeste (x = xmin)">West BC</span>
+            <span className="k" title="Condição de contorno na borda oeste (x = xmin)">{t("inspector.term.westBc")}</span>
             <span className="v">{activePde.west.type} = {activePde.west.expr}</span>
-            <span className="k" title="Condição de contorno na borda leste (x = xmax)">East BC</span>
+            <span className="k" title="Condição de contorno na borda leste (x = xmax)">{t("inspector.term.eastBc")}</span>
             <span className="v">{activePde.east.type} = {activePde.east.expr}</span>
           </div>
         </div>
@@ -97,9 +97,9 @@ export function Inspector({ open, onClose }: Props) {
         <div className="inspector-section">
           <div className="inspector-section-title">{t("inspector.section.solver")}</div>
           <div className="inspector-kv">
-            <span className="k" title="Método de aproximação das derivadas espaciais">Discretization</span><span className="v">{scheme.disc}</span>
-            <span className="k" title="Método de integração temporal">Integrator</span><span className="v">{scheme.time}</span>
-            <span className="k" title="Motor de cálculo utilizado">Backend</span>
+            <span className="k" title="Método de aproximação das derivadas espaciais">{t("inspector.term.discretization")}</span><span className="v">{scheme.disc}</span>
+            <span className="k" title="Método de integração temporal">{t("inspector.term.integrator")}</span><span className="v">{scheme.time}</span>
+            <span className="k" title="Motor de cálculo utilizado">{t("inspector.term.backend")}</span>
             <span className="v">{scheme.time === "RKF" ? "CUDA / cupy" : "numpy"}</span>
           </div>
         </div>
@@ -108,11 +108,11 @@ export function Inspector({ open, onClose }: Props) {
           <div className="inspector-section">
             <div className="inspector-section-title">{t("inspector.section.lastResult")}</div>
             <div className="inspector-kv">
-              <span className="k" title="Valor mínimo calculado do campo em todo o domínio">min(u)</span><span className="v">{field.min.toExponential(3)}</span>
-              <span className="k" title="Valor máximo calculado do campo em todo o domínio">max(u)</span><span className="v">{field.max.toExponential(3)}</span>
-              <span className="k" title="Número total de células da malha espacial-temporal (nx * nt)">Cells</span><span className="v">{field.xs.length * field.ts.length}</span>
-              <span className="k" title="Status de convergência do solver">Status</span>
-              <span className="v" style={{ color: "var(--success)" }} title="A simulação convergiu com sucesso">converged</span>
+              <span className="k" title="Valor mínimo calculado do campo em todo o domínio">{t("inspector.term.minU")}</span><span className="v">{field.min.toExponential(3)}</span>
+              <span className="k" title="Valor máximo calculado do campo em todo o domínio">{t("inspector.term.maxU")}</span><span className="v">{field.max.toExponential(3)}</span>
+              <span className="k" title="Número total de células da malha espacial-temporal (nx * nt)">{t("inspector.term.cells")}</span><span className="v">{field.xs.length * field.ts.length}</span>
+              <span className="k" title="Status de convergência do solver">{t("inspector.term.status")}</span>
+              <span className="v" style={{ color: "var(--success)" }} title="A simulação convergiu com sucesso">{t("inspector.term.converged")}</span>
             </div>
           </div>
         )}

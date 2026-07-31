@@ -22,6 +22,7 @@ import { TweaksPanel, type TweakValues } from "../../tweaks/TweaksPanel";
 import { bridge } from "../../api/pywebview";
 import { exportImage } from "../../viz/exportImage";
 import type { Palette } from "../../viz/colormap";
+import { useT } from "../../i18n/i18n";
 
 const DEFAULT_TWEAKS: TweakValues = {
   accent: "indigo",
@@ -36,6 +37,7 @@ interface DesktopShellProps {
 }
 
 export function DesktopShell({ onReady }: DesktopShellProps = {}) {
+  const { t } = useT();
   const system = useStore((s) => s.system);
   const ui = useStore((s) => s.ui);
   const runStatus = useStore((s) => s.run.status);
@@ -67,7 +69,8 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
     startTour();
   }, [ui.dirty, startTour]);
 
-  const [projectPath] = useState("pdesolver studio (em desenvolvimento) — unsaved");
+  const [projectTitle, setProjectTitle] = useState<string | null>(null);
+  const [projectPath, setProjectPath] = useState("pdesolver studio (em desenvolvimento) — unsaved");
   const [aboutOpen, setAboutOpen] = useState(false);
   const [dictionaryOpen, setDictionaryOpen] = useState(false);
   const [tweaksOpen, setTweaksOpen] = useState(false);
@@ -90,6 +93,28 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
     setUI({ dirty: false });
   }, [resetRun, setUI]);
 
+  const handleSave = useCallback((asNew: boolean = false) => {
+    let title = projectTitle;
+    if (asNew || !title) {
+      const res = prompt(t("prompt.saveAs"), title || "Meu Projeto");
+      if (!res) return;
+      title = res;
+      setProjectTitle(title);
+    }
+    const presets = JSON.parse(localStorage.getItem("pdesolver_user_presets") || "[]");
+    const existingIndex = presets.findIndex((p: any) => p.title === title);
+    const newPreset = { id: "user-" + Date.now(), title, system, timestamp: Date.now() };
+    if (existingIndex >= 0) {
+      presets[existingIndex] = newPreset;
+    } else {
+      presets.push(newPreset);
+    }
+    localStorage.setItem("pdesolver_user_presets", JSON.stringify(presets));
+    toast.success("Projeto salvo com sucesso!");
+    setUI({ dirty: false });
+    setProjectPath("pdesolver studio (em desenvolvimento) — " + title);
+  }, [projectTitle, system, t, setUI]);
+
 
 
   useEffect(() => {
@@ -102,7 +127,7 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
           case "1": e.preventDefault(); setUI({ vizTab: "plot1d" }); break;
           case "2": e.preventDefault(); setUI({ vizTab: "heatmap" }); break;
           case "3": e.preventDefault(); setUI({ vizTab: "plot3d" }); break;
-          case "s": e.preventDefault(); setUI({ dirty: false }); break;
+          case "s": e.preventDefault(); handleSave(e.shiftKey); break;
           case ",": e.preventDefault(); setTweaksOpen((o) => !o); break;
         }
       }
@@ -113,10 +138,10 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
 
 
   const actions: MenuActions = {
-    new: () => { loadPreset(heatPreset()); setUI({ dirty: false }); },
+    new: () => { loadPreset(heatPreset()); setUI({ dirty: false }); setProjectTitle(null); setProjectPath("pdesolver studio (em desenvolvimento) — unsaved"); },
     open: () => setUI({ drawer: "gallery" }),
-    save: () => setUI({ dirty: false }),
-    saveAs: () => setUI({ dirty: false }),
+    save: () => handleSave(false),
+    saveAs: () => handleSave(true),
     importJson: async () => {
       if (bridge.isDesktop()) {
         try {
@@ -295,6 +320,8 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
     dictionary: () => setDictionaryOpen(true),
     discretize: useCallback(() => { void discretize(); }, [discretize]),
     startTour: handleStartTour,
+    docs: () => window.open("https://github.com/maiocacedo/pdessolver-studio#readme", "_blank"),
+    shortcuts: () => window.open("https://github.com/maiocacedo/pdessolver-studio#readme", "_blank"),
   };
 
   const menuView = {
@@ -311,7 +338,7 @@ export function DesktopShell({ onReady }: DesktopShellProps = {}) {
         onRun={handleRun}
         onReset={handleReset}
         onOpen={() => setUI({ drawer: "gallery" })}
-        onSave={() => setUI({ dirty: false })}
+        onSave={() => handleSave(false)}
         vizPalette={tweaks.vizPalette}
         onPaletteChange={(p) => handleTweakChange("vizPalette", p)}
         onExport={actions.exportPng}

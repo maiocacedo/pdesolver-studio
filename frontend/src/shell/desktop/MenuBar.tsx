@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useT } from "../../i18n/i18n";
 
 export interface MenuActions {
   new: () => void;
@@ -27,6 +28,8 @@ export interface MenuActions {
   dictionary: () => void;
   discretize: () => void;
   startTour?: () => void;
+  docs: () => void;
+  shortcuts: () => void;
 }
 
 export interface MenuView {
@@ -42,6 +45,7 @@ interface Props {
 }
 
 export function MenuBar({ actions, view }: Props) {
+  const { t } = useT();
   const [open, setOpen] = useState<string | null>(null);
   const ref = useRef<HTMLElement>(null);
 
@@ -83,55 +87,55 @@ export function MenuBar({ actions, view }: Props) {
 
   return (
     <nav className="menubar" ref={ref}>
-      <Menu id="file" label="File">
-        <Item label="New" shortcut="Ctrl+N" onClick={actions.new} />
-        <Item label="Open…" shortcut="Ctrl+O" onClick={actions.open} />
-        <Item label="Open recent" disabled />
+      <Menu id="file" label={t("menu.file")}>
+        <Item label={t("menu.file.new")} shortcut="Ctrl+N" onClick={actions.new} />
+        <Item label={t("menu.file.open")} shortcut="Ctrl+O" onClick={actions.open} />
+        <Item label={t("menu.file.openRecent")} disabled />
         <div className="menu-sep" />
-        <Item label="Save" shortcut="Ctrl+S" onClick={actions.save} />
-        <Item label="Save as…" shortcut="Ctrl+Shift+S" onClick={actions.saveAs} />
+        <Item label={t("menu.file.save")} shortcut="Ctrl+S" onClick={actions.save} />
+        <Item label={t("menu.file.saveAs")} shortcut="Ctrl+Shift+S" onClick={actions.saveAs} />
         <div className="menu-sep" />
-        <Item label="Import JSON…" onClick={actions.importJson} />
-        <Item label="Export JSON…" onClick={actions.exportJson} />
-        <Item label="Export PNG" onClick={actions.exportPng} />
-        <Item label="Export CSV" onClick={actions.exportCsv} />
+        <Item label={t("menu.file.importJson")} onClick={actions.importJson} />
+        <Item label={t("menu.file.exportJson")} onClick={actions.exportJson} />
+        <Item label={t("menu.file.exportPng")} onClick={actions.exportPng} />
+        <Item label={t("menu.file.exportCsv")} onClick={actions.exportCsv} />
         <div className="menu-sep" />
-        <Item label="Exit" shortcut="Alt+F4" onClick={actions.quit} />
+        <Item label={t("menu.file.exit")} shortcut="Alt+F4" onClick={actions.quit} />
       </Menu>
-      <Menu id="edit" label="Edit">
-        <Item label="Undo" shortcut="Ctrl+Z" onClick={actions.undo} disabled={!actions.canUndo} />
-        <Item label="Redo" shortcut="Ctrl+Y" onClick={actions.redo} disabled={!actions.canRedo} />
+      <Menu id="edit" label={t("menu.edit")}>
+        <Item label={t("menu.edit.undo")} shortcut="Ctrl+Z" onClick={actions.undo} disabled={!actions.canUndo} />
+        <Item label={t("menu.edit.redo")} shortcut="Ctrl+Y" onClick={actions.redo} disabled={!actions.canRedo} />
         <div className="menu-sep" />
-        <Item label="Reset to defaults" onClick={actions.reset} />
+        <Item label={t("menu.edit.reset")} onClick={actions.reset} />
       </Menu>
-      <Menu id="solve" label="Solve">
-        <Item label="Run" shortcut="F5" onClick={actions.run} />
-        <Item label="Stop" shortcut="Shift+F5" disabled />
+      <Menu id="solve" label={t("menu.solve")}>
+        <Item label={t("menu.solve.run")} shortcut="F5" onClick={actions.run} />
+        <Item label={t("menu.solve.stop")} shortcut="Shift+F5" disabled />
         <div className="menu-sep" />
-        <Item label="Discretize only" onClick={actions.discretize} />
+        <Item label={t("menu.solve.discretizeOnly")} onClick={actions.discretize} />
         <div className="menu-sep" />
-        <Item label="Method: BDF-2" checked={view.method === "bdf2"} onClick={() => actions.setMethod("bdf2")} />
-        <Item label="Method: Crank–Nicolson" checked={view.method === "CN"} onClick={() => actions.setMethod("CN")} />
-        <Item label="Method: RKF (CUDA)" checked={view.method === "RKF"} onClick={() => actions.setMethod("RKF")} />
+        <Item label={t("menu.solve.methodBdf2")} checked={view.method === "bdf2"} onClick={() => actions.setMethod("bdf2")} />
+        <Item label={t("menu.solve.methodCn")} checked={view.method === "CN"} onClick={() => actions.setMethod("CN")} />
+        <Item label={t("menu.solve.methodRkf")} checked={view.method === "RKF"} onClick={() => actions.setMethod("RKF")} />
       </Menu>
-      <Menu id="view" label="View">
-        <Item label="1D profile" shortcut="Ctrl+1" checked={view.tab === "plot1d"} onClick={() => actions.setTab("plot1d")} />
-        <Item label="Heatmap" shortcut="Ctrl+2" checked={view.tab === "heatmap"} onClick={() => actions.setTab("heatmap")} />
-        <Item label="Surface 3D" shortcut="Ctrl+3" checked={view.tab === "plot3d"} onClick={() => actions.setTab("plot3d")} />
+      <Menu id="view" label={t("menu.view")}>
+        <Item label={t("menu.view.plot1d")} shortcut="Ctrl+1" checked={view.tab === "plot1d"} onClick={() => actions.setTab("plot1d")} />
+        <Item label={t("menu.view.heatmap")} shortcut="Ctrl+2" checked={view.tab === "heatmap"} onClick={() => actions.setTab("heatmap")} />
+        <Item label={t("menu.view.plot3d")} shortcut="Ctrl+3" checked={view.tab === "plot3d"} onClick={() => actions.setTab("plot3d")} />
         <div className="menu-sep" />
-        <Item label="Inspector pane" checked={view.showInspector} onClick={actions.toggleInspector} />
-        <Item label="Gallery…" onClick={actions.gallery} />
-        <Item label="History…" onClick={actions.history} />
+        <Item label={t("menu.view.inspector")} checked={view.showInspector} onClick={actions.toggleInspector} />
+        <Item label={t("menu.view.gallery")} onClick={actions.gallery} />
+        <Item label={t("menu.view.history")} onClick={actions.history} />
         <div className="menu-sep" />
-        <Item label="Advanced mode" checked={view.advanced} onClick={actions.toggleAdvanced} />
+        <Item label={t("menu.view.advanced")} checked={view.advanced} onClick={actions.toggleAdvanced} />
       </Menu>
-      <Menu id="help" label="Help">
-        <Item label="Interactive Tour" onClick={actions.startTour} />
-        <Item label="Documentation" onClick={() => {}} />
-        <Item label="Keyboard shortcuts" onClick={() => {}} />
-        <Item label="Inspector dictionary" onClick={actions.dictionary} />
+      <Menu id="help" label={t("menu.help")}>
+        <Item label={t("menu.help.tour")} onClick={actions.startTour} />
+        <Item label={t("menu.help.docs")} onClick={actions.docs} />
+        <Item label={t("menu.help.shortcuts")} onClick={actions.shortcuts} />
+        <Item label={t("menu.help.dictionary")} onClick={actions.dictionary} />
         <div className="menu-sep" />
-        <Item label="About pdesolver studio (em desenvolvimento)…" onClick={actions.about} />
+        <Item label={t("menu.help.about")} onClick={actions.about} />
       </Menu>
     </nav>
   );
