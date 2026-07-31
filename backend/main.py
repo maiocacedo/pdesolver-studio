@@ -47,6 +47,15 @@ def main() -> None:
         frameless=False,
     )
     api.bind_window(window)
+
+    def on_loaded():
+        try:
+            import pyi_splash
+            pyi_splash.close()
+        except ImportError:
+            pass
+
+    window.events.loaded += on_loaded
     webview.start(debug=os.environ.get("DEV") == "1")
 
 

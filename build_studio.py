@@ -32,8 +32,9 @@ def main():
         sys.executable,
         "-m",
         "PyInstaller",
-        "--onedir",
+        "--onefile",
         "--noconsole",
+        "--splash=splash.png",
         "--name=pdesolver-studio",
         f"--add-data={add_data_flag}",
     ]
